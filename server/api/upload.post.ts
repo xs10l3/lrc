@@ -39,7 +39,9 @@ export default defineEventHandler(async (event) => {
   try {
     const url = await uploadObject(key, file.data, file.type)
     return { ok: true, url }
-  } catch {
-    throw createError({ statusCode: 500, message: '上传到 OBS 失败，请检查配置' })
+  } catch (e) {
+    console.error('[OBS upload]', e)
+    const message = e instanceof Error ? e.message : '上传到 OBS 失败，请检查配置'
+    throw createError({ statusCode: 500, message })
   }
 })

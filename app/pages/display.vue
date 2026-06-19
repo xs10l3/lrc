@@ -21,19 +21,22 @@
           <div class="display-screen__vignette" aria-hidden="true" />
           <div class="display-screen__scanline" aria-hidden="true" />
 
-          <header v-if="showMeta" class="display-screen__meta">
-            <div class="display-screen__meta-line" />
-            <p v-if="meta.title" class="display-screen__title">{{ meta.title }}</p>
-            <p v-if="meta.artist" class="display-screen__artist">{{ meta.artist }}</p>
-          </header>
-
           <div class="display-screen__body">
             <div v-if="lines.length" class="display-screen__lyrics-wrap">
-              <TransitionGroup
-                name="lyric"
-                tag="div"
-                class="display-screen__lyrics"
-              >
+              <Transition name="lyric" mode="out-in">
+                <div v-if="showIntro" key="intro" class="display-screen__intro">
+                  <div class="display-screen__intro-line" aria-hidden="true" />
+                  <p v-if="meta.title" class="display-screen__intro-title">{{ meta.title }}</p>
+                  <p v-if="meta.artist" class="display-screen__intro-artist">{{ meta.artist }}</p>
+                </div>
+
+                <TransitionGroup
+                  v-else
+                  key="lyrics"
+                  name="lyric"
+                  tag="div"
+                  class="display-screen__lyrics"
+                >
                 <p
                   v-for="item in visibleItems"
                   :key="item.globalIndex"
@@ -61,6 +64,7 @@
                   <span v-else class="display-screen__line-text">{{ item.text || '…' }}</span>
                 </p>
               </TransitionGroup>
+              </Transition>
             </div>
 
             <div v-else class="display-screen__empty">
@@ -99,10 +103,14 @@ useHead({
 const { meta, lines, currentTime, displayMode, imageUrl } = usePlaybackSync()
 
 const showImage = computed(() => displayMode.value === 'image' && !!imageUrl.value)
-const showMeta = computed(() => !showImage.value && (meta.value.title || meta.value.artist))
-const showProgress = computed(() => !showImage.value && lines.value.length > 0)
-
 const activeIndex = computed(() => findActiveLineIndex(lines.value, currentTime.value))
+const showIntro = computed(() =>
+  !showImage.value
+  && activeIndex.value < 0
+  && lines.value.length > 0
+  && !!(meta.value.title || meta.value.artist),
+)
+const showProgress = computed(() => !showImage.value && lines.value.length > 0)
 
 const duration = computed(() => {
   const last = lines.value[lines.value.length - 1]
@@ -121,10 +129,7 @@ const visibleItems = computed(() => {
 
   type LineItem = { time: number, text: string, globalIndex: number, state: string }
 
-  if (idx < 0) {
-    const first = all[0]!
-    return [{ time: first.time, text: first.text, globalIndex: 0, state: 'is-active' }]
-  }
+  if (idx < 0) return []
 
   const items: LineItem[] = []
 
@@ -310,6 +315,58 @@ function splitChars(text: string): string[] {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.display-screen__intro {
+  width: 100%;
+  text-align: center;
+  animation: intro-enter 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.display-screen__intro-line {
+  width: clamp(2rem, 12vw, 3.5rem);
+  height: 1px;
+  margin: 0 auto clamp(1rem, 5vw, 1.6rem);
+  background: linear-gradient(90deg, transparent, #d4a853, transparent);
+  animation: line-breathe 3s ease-in-out infinite;
+}
+
+.display-screen__intro-title {
+  margin: 0;
+  font-size: clamp(1.4rem, 10vw, 2.4rem);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1.4;
+  background: linear-gradient(
+    160deg,
+    #fff 0%,
+    #ffe9b0 40%,
+    #d4a853 70%,
+    #fff8e0 100%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.display-screen__intro-artist {
+  margin: clamp(0.6rem, 3vw, 1rem) 0 0;
+  font-size: clamp(0.85rem, 5vw, 1.2rem);
+  color: rgba(255, 255, 255, 0.45);
+  letter-spacing: 0.2em;
+}
+
+@keyframes intro-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(24px) scale(0.94);
+    filter: blur(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
 }
 
 .display-screen__empty {

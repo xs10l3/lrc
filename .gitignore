@@ -22,3 +22,5 @@ public/uploads
 data/lyrics
 .env.*
 !.env.example
+
+.env

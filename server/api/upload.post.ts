@@ -1,9 +1,9 @@
-import { mkdir, writeFile } from 'node:fs/promises'
-import { join, extname } from 'node:path'
+import { extname } from 'node:path'
 import { randomUUID } from 'node:crypto'
-import { getUploadsDir } from '../utils/uploads'
+import { uploadObject } from '../utils/obs'
 
 const ALLOWED_EXT = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp'])
+const UPLOAD_PREFIX = 'uploads/'
 
 const MIME_EXT: Record<string, string> = {
   'image/jpeg': '.jpg',
@@ -33,13 +33,13 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: '图片不能超过 10MB' })
   }
 
-  const dir = getUploadsDir()
-  await mkdir(dir, { recursive: true })
-
   const filename = `${randomUUID()}${ext}`
-  await writeFile(join(dir, filename), file.data)
+  const key = `${UPLOAD_PREFIX}${filename}`
 
-  const url = `/uploads/${filename}`
-
-  return { ok: true, url }
+  try {
+    const url = await uploadObject(key, file.data, file.type)
+    return { ok: true, url }
+  } catch {
+    throw createError({ statusCode: 500, message: '上传到 OBS 失败，请检查配置' })
+  }
 })

@@ -1,32 +1,41 @@
-import { readdir, stat } from 'node:fs/promises'
-import { join, extname } from 'node:path'
+import { extname } from 'node:path'
+import { listObjects } from './obs'
 
 const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp'])
+const UPLOAD_PREFIX = 'uploads/'
 
-export function getUploadsDir() {
-  return join(process.cwd(), 'public', 'uploads')
+function getPublicBaseUrl(): string {
+  const config = useRuntimeConfig()
+  return (config.obsPublicBaseUrl as string).replace(/\/$/, '')
 }
 
 export function isValidUploadUrl(url: string): boolean {
-  if (!url.startsWith('/uploads/')) return false
-  const name = url.slice('/uploads/'.length)
-  if (!name || name.includes('/') || name.includes('..')) return false
-  return IMAGE_EXT.has(extname(name).toLowerCase())
+  const publicBase = getPublicBaseUrl()
+
+  if (url.startsWith(`${publicBase}/`)) {
+    const name = url.slice(publicBase.length + 1)
+    if (!name.startsWith(UPLOAD_PREFIX) || name.includes('..')) return false
+    return IMAGE_EXT.has(extname(name).toLowerCase())
+  }
+
+  if (url.startsWith('/uploads/')) {
+    const name = url.slice('/uploads/'.length)
+    if (!name || name.includes('/') || name.includes('..')) return false
+    return IMAGE_EXT.has(extname(name).toLowerCase())
+  }
+
+  return false
 }
 
 export async function listUploadedImages() {
-  const dir = getUploadsDir()
   try {
-    const files = await readdir(dir)
-    const images: { url: string, mtime: number }[] = []
-
-    for (const file of files) {
-      if (!IMAGE_EXT.has(extname(file).toLowerCase())) continue
-      const filePath = join(dir, file)
-      const info = await stat(filePath)
-      if (!info.isFile()) continue
-      images.push({ url: `/uploads/${file}`, mtime: info.mtimeMs })
-    }
+    const objects = await listObjects(UPLOAD_PREFIX)
+    const images = objects
+      .filter(obj => obj.Key && IMAGE_EXT.has(extname(obj.Key).toLowerCase()))
+      .map(obj => ({
+        url: `${getPublicBaseUrl()}/${obj.Key}`,
+        mtime: obj.LastModified?.getTime() ?? 0,
+      }))
 
     images.sort((a, b) => b.mtime - a.mtime)
     return images

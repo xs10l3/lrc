@@ -5,6 +5,7 @@
         :key="showImage ? imageUrl : 'lyrics'"
         class="display-screen"
         :class="{ 'display-screen--image': showImage }"
+        :data-theme="theme"
       >
         <template v-if="showImage">
           <div
@@ -15,7 +16,7 @@
         </template>
 
         <template v-else>
-          <DisplayParticles />
+          <DisplayParticles :theme="theme" />
 
           <div class="display-screen__aurora" aria-hidden="true" />
           <div class="display-screen__vignette" aria-hidden="true" />
@@ -100,7 +101,7 @@ useHead({
   ],
 })
 
-const { meta, lines, currentTime, displayMode, imageUrl } = usePlaybackSync()
+const { meta, lines, currentTime, displayMode, imageUrl, theme } = usePlaybackSync()
 
 const showImage = computed(() => displayMode.value === 'image' && !!imageUrl.value)
 const activeIndex = computed(() => findActiveLineIndex(lines.value, currentTime.value))
@@ -203,9 +204,31 @@ function splitChars(text: string): string[] {
 }
 
 .display-screen {
+  --bg-screen: #030308;
+  --border: rgba(255, 215, 120, 0.06);
+  --accent: #d4a853;
+  --accent-light: #ffe9b0;
+  --accent-soft: #fff8e0;
+  --accent-dark: #8b6914;
+  --text-muted: rgba(255, 255, 255, 0.45);
+  --text-subtle: rgba(255, 255, 255, 0.18);
+  --text-faint: rgba(255, 255, 255, 0.1);
+  --text-empty: rgba(255, 255, 255, 0.2);
+  --aurora-1: rgba(120, 80, 255, 0.18);
+  --aurora-2: rgba(255, 180, 60, 0.1);
+  --aurora-3: rgba(60, 140, 255, 0.08);
+  --gradient-intro: linear-gradient(160deg, #fff 0%, #ffe9b0 40%, #d4a853 70%, #fff8e0 100%);
+  --gradient-active: linear-gradient(160deg, #fff 0%, #ffe9b0 40%, #d4a853 70%, #fff8e0 100%);
+  --gradient-shimmer: linear-gradient(120deg, #fff 0%, #ffe9b0 35%, #fff 50%, #d4a853 65%, #fff 100%);
+  --gradient-progress: linear-gradient(90deg, #8b6914, #d4a853, #ffe9b0);
+  --progress-glow: rgba(212, 168, 83, 0.5);
+  --progress-dot-shadow: rgba(212, 168, 83, 0.8);
+  --ring-border: rgba(212, 168, 83, 0.3);
+  --ring-shadow: rgba(212, 168, 83, 0.4);
+
   width: min(100vw, calc(100dvh / 3));
   aspect-ratio: 1 / 3;
-  background: #030308;
+  background: var(--bg-screen);
   display: flex;
   flex-direction: column;
   padding: clamp(1.2rem, 5vw, 2.2rem) clamp(0.8rem, 3.5vw, 1.6rem);
@@ -213,8 +236,109 @@ function splitChars(text: string): string[] {
   position: relative;
   overflow: hidden;
   font-family: 'Noto Serif SC', 'Songti SC', serif;
-  border-left: 1px solid rgba(255, 215, 120, 0.06);
-  border-right: 1px solid rgba(255, 215, 120, 0.06);
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  transition: background 0.6s ease, border-color 0.6s ease;
+}
+
+.display-screen[data-theme="aurora"] {
+  --bg-screen: #050510;
+  --border: rgba(124, 155, 255, 0.1);
+  --accent: #7c9bff;
+  --accent-light: #c4d4ff;
+  --accent-soft: #e8eeff;
+  --accent-dark: #4a6fd4;
+  --aurora-1: rgba(124, 155, 255, 0.22);
+  --aurora-2: rgba(80, 220, 255, 0.12);
+  --aurora-3: rgba(180, 120, 255, 0.1);
+  --gradient-intro: linear-gradient(160deg, #fff 0%, #c4d4ff 40%, #7c9bff 70%, #e8eeff 100%);
+  --gradient-active: linear-gradient(160deg, #fff 0%, #c4d4ff 40%, #7c9bff 70%, #e8eeff 100%);
+  --gradient-shimmer: linear-gradient(120deg, #fff 0%, #c4d4ff 35%, #fff 50%, #7c9bff 65%, #fff 100%);
+  --gradient-progress: linear-gradient(90deg, #4a6fd4, #7c9bff, #c4d4ff);
+  --progress-glow: rgba(124, 155, 255, 0.5);
+  --progress-dot-shadow: rgba(124, 155, 255, 0.8);
+  --ring-border: rgba(124, 155, 255, 0.35);
+  --ring-shadow: rgba(124, 155, 255, 0.4);
+}
+
+.display-screen[data-theme="rose"] {
+  --bg-screen: #100508;
+  --border: rgba(255, 122, 154, 0.1);
+  --accent: #ff7a9a;
+  --accent-light: #ffc4d4;
+  --accent-soft: #ffe8ef;
+  --accent-dark: #c44a6a;
+  --aurora-1: rgba(255, 100, 140, 0.2);
+  --aurora-2: rgba(255, 160, 120, 0.12);
+  --aurora-3: rgba(200, 80, 120, 0.1);
+  --gradient-intro: linear-gradient(160deg, #fff 0%, #ffc4d4 40%, #ff7a9a 70%, #ffe8ef 100%);
+  --gradient-active: linear-gradient(160deg, #fff 0%, #ffc4d4 40%, #ff7a9a 70%, #ffe8ef 100%);
+  --gradient-shimmer: linear-gradient(120deg, #fff 0%, #ffc4d4 35%, #fff 50%, #ff7a9a 65%, #fff 100%);
+  --gradient-progress: linear-gradient(90deg, #c44a6a, #ff7a9a, #ffc4d4);
+  --progress-glow: rgba(255, 122, 154, 0.5);
+  --progress-dot-shadow: rgba(255, 122, 154, 0.8);
+  --ring-border: rgba(255, 122, 154, 0.35);
+  --ring-shadow: rgba(255, 122, 154, 0.4);
+}
+
+.display-screen[data-theme="jade"] {
+  --bg-screen: #030a08;
+  --border: rgba(95, 212, 168, 0.1);
+  --accent: #5fd4a8;
+  --accent-light: #b8f0d8;
+  --accent-soft: #e0faf0;
+  --accent-dark: #2a9a72;
+  --aurora-1: rgba(60, 200, 160, 0.18);
+  --aurora-2: rgba(120, 220, 180, 0.12);
+  --aurora-3: rgba(40, 160, 140, 0.1);
+  --gradient-intro: linear-gradient(160deg, #fff 0%, #b8f0d8 40%, #5fd4a8 70%, #e0faf0 100%);
+  --gradient-active: linear-gradient(160deg, #fff 0%, #b8f0d8 40%, #5fd4a8 70%, #e0faf0 100%);
+  --gradient-shimmer: linear-gradient(120deg, #fff 0%, #b8f0d8 35%, #fff 50%, #5fd4a8 65%, #fff 100%);
+  --gradient-progress: linear-gradient(90deg, #2a9a72, #5fd4a8, #b8f0d8);
+  --progress-glow: rgba(95, 212, 168, 0.5);
+  --progress-dot-shadow: rgba(95, 212, 168, 0.8);
+  --ring-border: rgba(95, 212, 168, 0.35);
+  --ring-shadow: rgba(95, 212, 168, 0.4);
+}
+
+.display-screen[data-theme="violet"] {
+  --bg-screen: #080510;
+  --border: rgba(167, 139, 255, 0.1);
+  --accent: #a78bff;
+  --accent-light: #d4c4ff;
+  --accent-soft: #f0ebff;
+  --accent-dark: #7050c4;
+  --aurora-1: rgba(167, 139, 255, 0.22);
+  --aurora-2: rgba(220, 120, 255, 0.12);
+  --aurora-3: rgba(120, 80, 200, 0.1);
+  --gradient-intro: linear-gradient(160deg, #fff 0%, #d4c4ff 40%, #a78bff 70%, #f0ebff 100%);
+  --gradient-active: linear-gradient(160deg, #fff 0%, #d4c4ff 40%, #a78bff 70%, #f0ebff 100%);
+  --gradient-shimmer: linear-gradient(120deg, #fff 0%, #d4c4ff 35%, #fff 50%, #a78bff 65%, #fff 100%);
+  --gradient-progress: linear-gradient(90deg, #7050c4, #a78bff, #d4c4ff);
+  --progress-glow: rgba(167, 139, 255, 0.5);
+  --progress-dot-shadow: rgba(167, 139, 255, 0.8);
+  --ring-border: rgba(167, 139, 255, 0.35);
+  --ring-shadow: rgba(167, 139, 255, 0.4);
+}
+
+.display-screen[data-theme="amber"] {
+  --bg-screen: #0a0703;
+  --border: rgba(255, 176, 74, 0.1);
+  --accent: #ffb04a;
+  --accent-light: #ffe0a8;
+  --accent-soft: #fff4e0;
+  --accent-dark: #c47a20;
+  --aurora-1: rgba(255, 160, 60, 0.2);
+  --aurora-2: rgba(255, 200, 100, 0.14);
+  --aurora-3: rgba(200, 120, 40, 0.1);
+  --gradient-intro: linear-gradient(160deg, #fff 0%, #ffe0a8 40%, #ffb04a 70%, #fff4e0 100%);
+  --gradient-active: linear-gradient(160deg, #fff 0%, #ffe0a8 40%, #ffb04a 70%, #fff4e0 100%);
+  --gradient-shimmer: linear-gradient(120deg, #fff 0%, #ffe0a8 35%, #fff 50%, #ffb04a 65%, #fff 100%);
+  --gradient-progress: linear-gradient(90deg, #c47a20, #ffb04a, #ffe0a8);
+  --progress-glow: rgba(255, 176, 74, 0.5);
+  --progress-dot-shadow: rgba(255, 176, 74, 0.8);
+  --ring-border: rgba(255, 176, 74, 0.35);
+  --ring-shadow: rgba(255, 176, 74, 0.4);
 }
 
 /* 极光背景 */
@@ -223,9 +347,9 @@ function splitChars(text: string): string[] {
   inset: -20%;
   z-index: 0;
   background:
-    radial-gradient(ellipse 60% 40% at 50% 0%, rgba(120, 80, 255, 0.18), transparent 70%),
-    radial-gradient(ellipse 50% 35% at 20% 60%, rgba(255, 180, 60, 0.1), transparent 65%),
-    radial-gradient(ellipse 45% 30% at 80% 75%, rgba(60, 140, 255, 0.08), transparent 60%);
+    radial-gradient(ellipse 60% 40% at 50% 0%, var(--aurora-1), transparent 70%),
+    radial-gradient(ellipse 50% 35% at 20% 60%, var(--aurora-2), transparent 65%),
+    radial-gradient(ellipse 45% 30% at 80% 75%, var(--aurora-3), transparent 60%);
   animation: aurora-shift 12s ease-in-out infinite alternate;
   pointer-events: none;
 }
@@ -275,7 +399,7 @@ function splitChars(text: string): string[] {
   width: 2rem;
   height: 1px;
   margin: 0 auto 0.75rem;
-  background: linear-gradient(90deg, transparent, #d4a853, transparent);
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
   animation: line-breathe 3s ease-in-out infinite;
 }
 
@@ -287,7 +411,7 @@ function splitChars(text: string): string[] {
 .display-screen__title {
   margin: 0;
   font-size: clamp(0.65rem, 3.2vw, 0.95rem);
-  color: rgba(212, 168, 83, 0.7);
+  color: color-mix(in srgb, var(--accent) 70%, transparent);
   letter-spacing: 0.25em;
   text-transform: uppercase;
   font-weight: 600;
@@ -327,7 +451,7 @@ function splitChars(text: string): string[] {
   width: clamp(2rem, 12vw, 3.5rem);
   height: 1px;
   margin: 0 auto clamp(1rem, 5vw, 1.6rem);
-  background: linear-gradient(90deg, transparent, #d4a853, transparent);
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
   animation: line-breathe 3s ease-in-out infinite;
 }
 
@@ -337,13 +461,7 @@ function splitChars(text: string): string[] {
   font-weight: 700;
   letter-spacing: 0.12em;
   line-height: 1.4;
-  background: linear-gradient(
-    160deg,
-    #fff 0%,
-    #ffe9b0 40%,
-    #d4a853 70%,
-    #fff8e0 100%
-  );
+  background: var(--gradient-intro);
   background-clip: text;
   -webkit-background-clip: text;
   color: transparent;
@@ -352,7 +470,7 @@ function splitChars(text: string): string[] {
 .display-screen__intro-artist {
   margin: clamp(0.6rem, 3vw, 1rem) 0 0;
   font-size: clamp(0.85rem, 5vw, 1.2rem);
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--text-muted);
   letter-spacing: 0.2em;
 }
 
@@ -376,7 +494,7 @@ function splitChars(text: string): string[] {
 
 .display-screen__empty p {
   margin: 0;
-  color: rgba(255, 255, 255, 0.2);
+  color: var(--text-empty);
   font-size: clamp(0.75rem, 3.8vw, 1rem);
   letter-spacing: 0.35em;
   animation: empty-pulse 2.5s ease-in-out infinite;
@@ -392,13 +510,13 @@ function splitChars(text: string): string[] {
   height: clamp(2rem, 10vw, 3.5rem);
   margin: 0 auto 1.2rem;
   border-radius: 50%;
-  border: 1px solid rgba(212, 168, 83, 0.3);
+  border: 1px solid var(--ring-border);
   animation: ring-pulse 2s ease-out infinite;
 }
 
 @keyframes ring-pulse {
-  0% { transform: scale(0.8); opacity: 1; box-shadow: 0 0 0 0 rgba(212, 168, 83, 0.4); }
-  100% { transform: scale(1.4); opacity: 0; box-shadow: 0 0 0 1rem rgba(212, 168, 83, 0); }
+  0% { transform: scale(0.8); opacity: 1; box-shadow: 0 0 0 0 var(--ring-shadow); }
+  100% { transform: scale(1.4); opacity: 0; box-shadow: 0 0 0 1rem transparent; }
 }
 
 .display-screen__lyrics {
@@ -442,7 +560,7 @@ function splitChars(text: string): string[] {
 }
 
 .display-screen__char--glow {
-  color: #ffe9b0;
+  color: var(--accent-light);
   animation: char-emerge-glow 1s cubic-bezier(0.16, 1, 0.3, 1) both;
   animation-delay: var(--delay, 0s);
 }
@@ -499,7 +617,7 @@ function splitChars(text: string): string[] {
 
 .display-screen__line.is-past {
   font-size: clamp(0.8rem, 4.5vw, 1.1rem);
-  color: rgba(255, 255, 255, 0.1);
+  color: var(--text-faint);
   transform: scale(0.9) translateY(-8px);
   filter: blur(1px);
 }
@@ -514,14 +632,7 @@ function splitChars(text: string): string[] {
 }
 
 .display-screen__line.is-active .display-screen__line-text--emerge {
-  background: linear-gradient(
-    120deg,
-    #fff 0%,
-    #ffe9b0 35%,
-    #fff 50%,
-    #d4a853 65%,
-    #fff 100%
-  );
+  background: var(--gradient-shimmer);
   background-size: 200% auto;
   background-clip: text;
   -webkit-background-clip: text;
@@ -531,13 +642,7 @@ function splitChars(text: string): string[] {
 }
 
 .display-screen__line.is-active .display-screen__char {
-  background: linear-gradient(
-    160deg,
-    #fff 0%,
-    #ffe9b0 40%,
-    #d4a853 70%,
-    #fff8e0 100%
-  );
+  background: var(--gradient-active);
   background-clip: text;
   -webkit-background-clip: text;
   color: transparent;
@@ -555,7 +660,7 @@ function splitChars(text: string): string[] {
 
 .display-screen__line.is-next {
   font-size: clamp(0.9rem, 5vw, 1.25rem);
-  color: rgba(255, 255, 255, 0.18);
+  color: var(--text-subtle);
   transform: scale(0.94) translateY(10px);
 }
 
@@ -600,7 +705,7 @@ function splitChars(text: string): string[] {
 .display-screen__progress-bar {
   height: 100%;
   border-radius: 2px;
-  background: linear-gradient(90deg, #8b6914, #d4a853, #ffe9b0);
+  background: var(--gradient-progress);
   transition: width 0.1s linear;
 }
 
@@ -610,7 +715,7 @@ function splitChars(text: string): string[] {
   left: 0;
   height: 8px;
   border-radius: 4px;
-  background: linear-gradient(90deg, transparent, rgba(212, 168, 83, 0.5), transparent);
+  background: linear-gradient(90deg, transparent, var(--progress-glow), transparent);
   filter: blur(4px);
   transition: width 0.1s linear;
   pointer-events: none;
@@ -622,8 +727,8 @@ function splitChars(text: string): string[] {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #ffe9b0;
-  box-shadow: 0 0 8px 2px rgba(212, 168, 83, 0.8);
+  background: var(--accent-light);
+  box-shadow: 0 0 8px 2px var(--progress-dot-shadow);
   transform: translateX(-50%);
   transition: left 0.1s linear;
 }

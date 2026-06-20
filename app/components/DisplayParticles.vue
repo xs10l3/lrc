@@ -3,6 +3,12 @@
 </template>
 
 <script setup lang="ts">
+import type { DisplayTheme } from '#shared/utils/themes'
+
+const props = defineProps<{
+  theme: DisplayTheme
+}>()
+
 const canvas = ref<HTMLCanvasElement | null>(null)
 
 interface Particle {
@@ -15,10 +21,20 @@ interface Particle {
   hue: number
 }
 
+const THEME_HUES: Record<DisplayTheme, [number, number]> = {
+  gold: [45, 220],
+  aurora: [260, 200],
+  rose: [340, 20],
+  jade: [160, 120],
+  violet: [270, 290],
+  amber: [35, 25],
+}
+
 let animId = 0
 let particles: Particle[] = []
 
 function init(width: number, height: number) {
+  const [primary, secondary] = THEME_HUES[props.theme]
   const count = Math.floor((width * height) / 8000)
   particles = Array.from({ length: Math.min(count, 80) }, () => ({
     x: Math.random() * width,
@@ -27,7 +43,7 @@ function init(width: number, height: number) {
     speedY: -(Math.random() * 0.4 + 0.15),
     speedX: (Math.random() - 0.5) * 0.2,
     opacity: Math.random() * 0.6 + 0.2,
-    hue: Math.random() > 0.7 ? 45 : 220,
+    hue: Math.random() > 0.7 ? primary : secondary,
   }))
 }
 
@@ -79,6 +95,10 @@ function resize() {
   }
   init(cssWidth, cssHeight)
 }
+
+watch(() => props.theme, () => {
+  if (cssWidth && cssHeight) init(cssWidth, cssHeight)
+})
 
 onMounted(() => {
   resize()

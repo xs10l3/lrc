@@ -1,3 +1,5 @@
+import type { DisplayTheme } from '#shared/utils/themes'
+import { DEFAULT_THEME } from '#shared/utils/themes'
 import type { LyricLine, LrcMeta } from '#shared/utils/parseLrc'
 import { isValidUploadUrl } from './uploads'
 
@@ -13,6 +15,7 @@ export interface PlaybackState {
   displayMode: DisplayMode
   imageUrl: string
   pendingImages: string[]
+  theme: DisplayTheme
 }
 
 const state: PlaybackState = {
@@ -25,6 +28,7 @@ const state: PlaybackState = {
   displayMode: 'lyrics',
   imageUrl: '',
   pendingImages: [],
+  theme: DEFAULT_THEME,
 }
 
 export function getPlaybackState(): PlaybackState {
@@ -144,4 +148,8 @@ export function reset() {
   state.isPlaying = false
   state.anchorTime = 0
   state.anchorAt = Date.now()
+}
+
+export function setTheme(theme: DisplayTheme) {
+  state.theme = theme
 }

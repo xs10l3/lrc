@@ -180,6 +180,24 @@
     </section>
 
     <section class="admin__panel">
+      <h2>展示主题</h2>
+      <p class="admin__hint">切换显示端视觉风格，实时同步</p>
+      <div class="admin__theme-grid">
+        <button
+          v-for="item in THEME_LIST"
+          :key="item.id"
+          type="button"
+          class="admin__theme-item"
+          :class="{ 'admin__theme-item--active': theme === item.id }"
+          @click="switchTheme(item.id)"
+        >
+          <span class="admin__theme-swatch" :style="{ background: item.accent }" />
+          <span class="admin__theme-name">{{ item.name }}</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="admin__panel">
       <h2>展示控制</h2>
       <p class="admin__hint">管理显示端当前状态</p>
 
@@ -255,6 +273,8 @@
 
 <script setup lang="ts">
 import { findActiveLineIndex, formatTime } from '#shared/utils/parseLrc'
+import { THEME_LIST } from '#shared/utils/themes'
+import type { DisplayTheme } from '#shared/utils/themes'
 
 const rawText = ref('')
 const fileName = ref('')
@@ -291,7 +311,7 @@ const currentImageUrl = ref('')
 const uploadedImages = ref<{ url: string, mtime: number }[]>([])
 const imageInput = ref<HTMLInputElement | null>(null)
 
-const { lines, isPlaying, currentTime: syncedTime, displayMode, imageUrl, pendingImages, refresh } = usePlaybackSync()
+const { lines, isPlaying, currentTime: syncedTime, displayMode, imageUrl, pendingImages, theme, refresh } = usePlaybackSync()
 
 const hasLyrics = computed(() => previewLines.value.length > 0)
 const duration = computed(() => {
@@ -539,6 +559,10 @@ async function uploadImage() {
 
 async function switchMode(mode: 'lyrics' | 'image') {
   await send('setMode', { mode })
+}
+
+async function switchTheme(nextTheme: DisplayTheme) {
+  await send('setTheme', { theme: nextTheme })
 }
 
 function onImageSelect(e: Event) {
@@ -827,6 +851,48 @@ function onSeek(e: Event) {
   font-size: 0.8rem;
   color: #666;
   margin-right: 0.25rem;
+}
+
+.admin__theme-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.admin__theme-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  color: #ccc;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, transform 0.2s;
+}
+
+.admin__theme-item:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+  transform: translateY(-1px);
+}
+
+.admin__theme-item--active {
+  border-color: rgba(212, 168, 83, 0.45);
+  background: rgba(212, 168, 83, 0.08);
+  color: #fff;
+}
+
+.admin__theme-swatch {
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 12px currentColor;
+}
+
+.admin__theme-name {
+  font-size: 0.9rem;
 }
 
 .btn--mode {

@@ -1,3 +1,4 @@
+import { isValidTheme } from '#shared/utils/themes'
 import { parseLrc } from '#shared/utils/parseLrc'
 import {
   addPendingImage,
@@ -13,6 +14,7 @@ import {
   setDisplayMode,
   setImage,
   setLyrics,
+  setTheme,
   showNextPending,
   showPendingImage,
   togglePlay,
@@ -100,6 +102,14 @@ export default defineEventHandler(async (event) => {
     const mode = body.mode === 'image' ? 'image' : 'lyrics'
     setDisplayMode(mode)
     return { ok: true }
+  }
+
+  if (body?.action === 'setTheme') {
+    if (!isValidTheme(body.theme)) {
+      throw createError({ statusCode: 400, message: '无效的主题' })
+    }
+    setTheme(body.theme)
+    return { ok: true, theme: body.theme }
   }
 
   if (body?.action === 'play') {

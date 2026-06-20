@@ -1,3 +1,6 @@
+import type { DisplayTheme } from '#shared/utils/themes'
+import { DEFAULT_THEME } from '#shared/utils/themes'
+
 export function usePlaybackSync() {
   const meta = ref<{ title?: string, artist?: string, album?: string }>({})
   const lines = ref<{ time: number, text: string }[]>([])
@@ -6,6 +9,7 @@ export function usePlaybackSync() {
   const displayMode = ref<'lyrics' | 'image'>('lyrics')
   const imageUrl = ref('')
   const pendingImages = ref<string[]>([])
+  const theme = ref<DisplayTheme>(DEFAULT_THEME)
 
   let timer: ReturnType<typeof setInterval> | null = null
   let lastServerTime = 0
@@ -22,6 +26,7 @@ export function usePlaybackSync() {
         displayMode: 'lyrics' | 'image'
         imageUrl: string
         pendingImages: string[]
+        theme: DisplayTheme
       }>('/api/state')
       meta.value = data.meta
       lines.value = data.lines
@@ -30,6 +35,7 @@ export function usePlaybackSync() {
       displayMode.value = data.displayMode
       imageUrl.value = data.imageUrl
       pendingImages.value = data.pendingImages
+      theme.value = data.theme
       lastServerTime = data.currentTime
       lastFetchAt = Date.now()
       localPlaying = data.isPlaying
@@ -68,6 +74,7 @@ export function usePlaybackSync() {
     displayMode,
     imageUrl,
     pendingImages,
+    theme,
     refresh: fetchState,
   }
 }

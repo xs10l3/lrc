@@ -5,7 +5,7 @@
       <p class="home__badge">LRC DISPLAY</p>
       <h1>歌词展示系统</h1>
       <p class="home__desc">1:3 竖屏 · 黑金视觉 · 毕业典礼现场</p>
-      <nav class="home__nav">
+      <!-- <nav class="home__nav">
         <NuxtLink to="/admin" class="home__card">
           <span class="home__card-icon">⚙</span>
           <span class="home__card-title">管理端</span>
@@ -16,7 +16,7 @@
           <span class="home__card-title">显示端</span>
           <span class="home__card-desc">竖屏歌词展示</span>
         </NuxtLink>
-      </nav>
+      </nav> -->
     </div>
   </div>
 </template>

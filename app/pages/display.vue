@@ -6,6 +6,7 @@
         class="display-screen"
         :class="{ 'display-screen--image': showImage }"
         :data-theme="theme"
+        :style="{ '--font-scale': fontScaleRatio }"
       >
         <template v-if="showImage">
           <div
@@ -101,9 +102,10 @@ useHead({
   ],
 })
 
-const { meta, lines, currentTime, displayMode, imageUrl, theme } = usePlaybackSync()
+const { meta, lines, currentTime, displayMode, imageUrl, theme, fontScale } = usePlaybackSync()
 
 const showImage = computed(() => displayMode.value === 'image' && !!imageUrl.value)
+const fontScaleRatio = computed(() => fontScale.value / 100)
 const activeIndex = computed(() => findActiveLineIndex(lines.value, currentTime.value))
 const showIntro = computed(() =>
   !showImage.value
@@ -204,6 +206,7 @@ function splitChars(text: string): string[] {
 }
 
 .display-screen {
+  --font-scale: 1;
   --bg-screen: #030308;
   --border: rgba(255, 215, 120, 0.06);
   --accent: #d4a853;
@@ -457,7 +460,7 @@ function splitChars(text: string): string[] {
 
 .display-screen__intro-title {
   margin: 0;
-  font-size: clamp(1.4rem, 10vw, 2.4rem);
+  font-size: clamp(calc(1.4rem * var(--font-scale)), calc(10vw * var(--font-scale)), calc(2.4rem * var(--font-scale)));
   font-weight: 700;
   letter-spacing: 0.12em;
   line-height: 1.4;
@@ -469,7 +472,7 @@ function splitChars(text: string): string[] {
 
 .display-screen__intro-artist {
   margin: clamp(0.6rem, 3vw, 1rem) 0 0;
-  font-size: clamp(0.85rem, 5vw, 1.2rem);
+  font-size: clamp(calc(0.85rem * var(--font-scale)), calc(5vw * var(--font-scale)), calc(1.2rem * var(--font-scale)));
   color: var(--text-muted);
   letter-spacing: 0.2em;
 }
@@ -495,7 +498,7 @@ function splitChars(text: string): string[] {
 .display-screen__empty p {
   margin: 0;
   color: var(--text-empty);
-  font-size: clamp(0.75rem, 3.8vw, 1rem);
+  font-size: clamp(calc(0.75rem * var(--font-scale)), calc(3.8vw * var(--font-scale)), calc(1rem * var(--font-scale)));
   letter-spacing: 0.35em;
   animation: empty-pulse 2.5s ease-in-out infinite;
 }
@@ -616,14 +619,14 @@ function splitChars(text: string): string[] {
 }
 
 .display-screen__line.is-past {
-  font-size: clamp(0.8rem, 4.5vw, 1.1rem);
+  font-size: clamp(calc(0.8rem * var(--font-scale)), calc(4.5vw * var(--font-scale)), calc(1.1rem * var(--font-scale)));
   color: var(--text-faint);
   transform: scale(0.9) translateY(-8px);
   filter: blur(1px);
 }
 
 .display-screen__line.is-active {
-  font-size: clamp(1.8rem, 13vw, 3.2rem);
+  font-size: clamp(calc(1.8rem * var(--font-scale)), calc(13vw * var(--font-scale)), calc(3.2rem * var(--font-scale)));
   font-weight: 700;
   letter-spacing: 0.08em;
   transform: scale(1);
@@ -659,7 +662,7 @@ function splitChars(text: string): string[] {
 }
 
 .display-screen__line.is-next {
-  font-size: clamp(0.9rem, 5vw, 1.25rem);
+  font-size: clamp(calc(0.9rem * var(--font-scale)), calc(5vw * var(--font-scale)), calc(1.25rem * var(--font-scale)));
   color: var(--text-subtle);
   transform: scale(0.94) translateY(10px);
 }

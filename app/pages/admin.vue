@@ -1,14 +1,104 @@
 <template>
-  <div class="admin">
+  <div class="admin" :class="{ 'admin--auth': !authenticated }">
+    <section v-if="authChecking" class="admin__login">
+      <h1>歌词管理端</h1>
+      <p class="admin__subtitle">正在检查登录状态…</p>
+    </section>
+
+    <form v-else-if="!authenticated" class="admin__login" @submit.prevent="login">
+      <h1>歌词管理端</h1>
+      <p class="admin__subtitle">请输入管理密码后继续</p>
+      <input
+        v-model="adminPassword"
+        class="admin__password"
+        type="password"
+        autocomplete="current-password"
+        placeholder="管理密码"
+        :disabled="loggingIn"
+      >
+      <button class="btn btn--primary" type="submit" :disabled="!adminPassword || loggingIn">
+        {{ loggingIn ? '登录中…' : '登录' }}
+      </button>
+      <p v-if="authMessage" class="admin__upload-msg admin__upload-msg--error">{{ authMessage }}</p>
+    </form>
+
+    <template v-else>
     <header class="admin__header">
       <div>
         <h1>歌词管理端</h1>
         <p class="admin__subtitle">上传 LRC 歌词或图片，控制播放，显示端实时同步</p>
       </div>
-      <NuxtLink to="/display" target="_blank" class="admin__link">
-        打开展示端 ↗
-      </NuxtLink>
+      <div class="admin__header-actions">
+        <NuxtLink to="/display" target="_blank" class="admin__link">
+          打开展示端 ↗
+        </NuxtLink>
+        <button class="btn btn--ghost" type="button" @click="logout">退出</button>
+      </div>
     </header>
+
+
+    <section class="admin__panel">
+      <h2>展示控制</h2>
+      <p class="admin__hint">管理显示端当前状态</p>
+
+      <div class="admin__actions admin__actions--display">
+        <button class="btn btn--danger" :disabled="!currentImageUrl" @click="stopDisplay">
+          停止展示
+        </button>
+      </div>
+
+      <div v-if="currentImageUrl && displayMode === 'image'" class="admin__display-preview">
+        <span class="admin__display-label">显示端当前图片</span>
+        <img :src="currentImageUrl" alt="当前展示">
+      </div>
+      <p v-else class="admin__gallery-empty">显示端未展示图片</p>
+
+      <div v-if="currentImageUrl || hasLyrics" class="admin__mode-switch">
+        <span class="admin__mode-label">显示端模式：</span>
+        <button
+          class="btn btn--mode"
+          :class="{ 'btn--mode-active': displayMode === 'lyrics' }"
+          :disabled="!hasLyrics"
+          @click="switchMode('lyrics')"
+        >
+          歌词
+        </button>
+        <button
+          class="btn btn--mode"
+          :class="{ 'btn--mode-active': displayMode === 'image' }"
+          :disabled="!currentImageUrl"
+          @click="switchMode('image')"
+        >
+          图片
+        </button>
+      </div>
+    </section>
+
+    <section class="admin__panel">
+      <h2>歌词库</h2>
+      <p class="admin__hint">已保存的歌词，点击加载到显示端</p>
+
+      <ul v-if="savedLyrics.length" class="admin__lyric-list">
+        <li
+          v-for="item in savedLyrics"
+          :key="item.id"
+          class="admin__lyric-item"
+          :class="{ 'admin__lyric-item--active': activeLyricId === item.id }"
+        >
+          <div class="admin__lyric-item-main">
+            <span class="admin__lyric-item-title">{{ item.title || item.name }}</span>
+            <span v-if="item.artist" class="admin__lyric-item-artist">{{ item.artist }}</span>
+            <span class="admin__lyric-item-meta">{{ item.lineCount }} 行</span>
+          </div>
+          <div class="admin__lyric-item-actions">
+            <button class="btn btn--icon btn--icon-show" title="加载" @click="loadSavedLyric(item.id)">▶</button>
+            <button class="btn btn--icon" title="填入编辑区" @click="fillEditor(item.id)">✎</button>
+            <button class="btn btn--icon btn--icon-remove" title="删除" @click="deleteSavedLyric(item.id)">×</button>
+          </div>
+        </li>
+      </ul>
+      <p v-else class="admin__gallery-empty">歌词库为空，请先保存歌词</p>
+    </section>
 
     <section class="admin__panel">
       <h2>歌词编辑</h2>
@@ -48,32 +138,6 @@
     </section>
 
     <section class="admin__panel">
-      <h2>歌词库</h2>
-      <p class="admin__hint">已保存的歌词，点击加载到显示端</p>
-
-      <ul v-if="savedLyrics.length" class="admin__lyric-list">
-        <li
-          v-for="item in savedLyrics"
-          :key="item.id"
-          class="admin__lyric-item"
-          :class="{ 'admin__lyric-item--active': activeLyricId === item.id }"
-        >
-          <div class="admin__lyric-item-main">
-            <span class="admin__lyric-item-title">{{ item.title || item.name }}</span>
-            <span v-if="item.artist" class="admin__lyric-item-artist">{{ item.artist }}</span>
-            <span class="admin__lyric-item-meta">{{ item.lineCount }} 行</span>
-          </div>
-          <div class="admin__lyric-item-actions">
-            <button class="btn btn--icon btn--icon-show" title="加载" @click="loadSavedLyric(item.id)">▶</button>
-            <button class="btn btn--icon" title="填入编辑区" @click="fillEditor(item.id)">✎</button>
-            <button class="btn btn--icon btn--icon-remove" title="删除" @click="deleteSavedLyric(item.id)">×</button>
-          </div>
-        </li>
-      </ul>
-      <p v-else class="admin__gallery-empty">歌词库为空，请先保存歌词</p>
-    </section>
-
-    <section class="admin__panel">
       <h2>上传图片</h2>
       <p class="admin__hint">仅保存到图库，不会自动推送到显示端</p>
       <div class="admin__upload-row">
@@ -104,7 +168,7 @@
 
     <section class="admin__panel">
       <h2>图库</h2>
-      <p class="admin__hint">选择图片后可加入待展示队列</p>
+      <p class="admin__hint">选择图片后可直接展示，或加入待展示队列</p>
 
       <div v-if="uploadedImages.length" class="admin__gallery">
         <div class="admin__gallery-grid">
@@ -127,10 +191,16 @@
       <p v-else class="admin__gallery-empty">图库为空，请先上传图片</p>
 
       <div class="admin__actions">
+        <button class="btn btn--primary" :disabled="!selectedImageUrl || directDisplaying" @click="showSelectedImage">
+          {{ directDisplaying ? '展示中…' : '直接展示' }}
+        </button>
         <button class="btn" :disabled="!selectedImageUrl" @click="addToPending">
           加入待展示
         </button>
       </div>
+      <p v-if="galleryMessage" class="admin__upload-msg" :class="{ 'admin__upload-msg--error': galleryError }">
+        {{ galleryMessage }}
+      </p>
     </section>
 
     <section class="admin__panel">
@@ -180,8 +250,8 @@
     </section>
 
     <section class="admin__panel">
-      <h2>展示主题</h2>
-      <p class="admin__hint">切换显示端视觉风格，实时同步</p>
+      <h2>展示样式</h2>
+      <p class="admin__hint">调整显示端视觉风格，实时同步</p>
       <div class="admin__theme-grid">
         <button
           v-for="item in THEME_LIST"
@@ -195,42 +265,19 @@
           <span class="admin__theme-name">{{ item.name }}</span>
         </button>
       </div>
-    </section>
-
-    <section class="admin__panel">
-      <h2>展示控制</h2>
-      <p class="admin__hint">管理显示端当前状态</p>
-
-      <div class="admin__actions admin__actions--display">
-        <button class="btn btn--danger" :disabled="!currentImageUrl" @click="stopDisplay">
-          停止展示
-        </button>
-      </div>
-
-      <div v-if="currentImageUrl && displayMode === 'image'" class="admin__display-preview">
-        <span class="admin__display-label">显示端当前图片</span>
-        <img :src="currentImageUrl" alt="当前展示">
-      </div>
-      <p v-else class="admin__gallery-empty">显示端未展示图片</p>
-
-      <div v-if="currentImageUrl || hasLyrics" class="admin__mode-switch">
-        <span class="admin__mode-label">显示端模式：</span>
-        <button
-          class="btn btn--mode"
-          :class="{ 'btn--mode-active': displayMode === 'lyrics' }"
-          :disabled="!hasLyrics"
-          @click="switchMode('lyrics')"
+      <div class="admin__font-control">
+        <div class="admin__font-row">
+          <span class="admin__mode-label">字幕大小</span>
+          <span class="admin__font-value">{{ fontScale }}%</span>
+        </div>
+        <input
+          type="range"
+          min="75"
+          max="140"
+          step="5"
+          :value="fontScale"
+          @input="onFontScaleInput"
         >
-          歌词
-        </button>
-        <button
-          class="btn btn--mode"
-          :class="{ 'btn--mode-active': displayMode === 'image' }"
-          :disabled="!currentImageUrl"
-          @click="switchMode('image')"
-        >
-          图片
-        </button>
       </div>
     </section>
 
@@ -268,6 +315,7 @@
         </li>
       </ul>
     </section>
+    </template>
   </div>
 </template>
 
@@ -275,6 +323,12 @@
 import { findActiveLineIndex, formatTime } from '#shared/utils/parseLrc'
 import { THEME_LIST } from '#shared/utils/themes'
 import type { DisplayTheme } from '#shared/utils/themes'
+
+const authChecking = ref(true)
+const authenticated = ref(false)
+const adminPassword = ref('')
+const loggingIn = ref(false)
+const authMessage = ref('')
 
 const rawText = ref('')
 const fileName = ref('')
@@ -305,13 +359,26 @@ const imagePreview = ref('')
 const imageUploading = ref(false)
 const uploadMessage = ref('')
 const uploadError = ref(false)
+const galleryMessage = ref('')
+const galleryError = ref(false)
 const selectedImageUrl = ref('')
 const displaying = ref(false)
+const directDisplaying = ref(false)
 const currentImageUrl = ref('')
 const uploadedImages = ref<{ url: string, mtime: number }[]>([])
 const imageInput = ref<HTMLInputElement | null>(null)
 
-const { lines, isPlaying, currentTime: syncedTime, displayMode, imageUrl, pendingImages, theme, refresh } = usePlaybackSync()
+const {
+  lines,
+  isPlaying,
+  currentTime: syncedTime,
+  displayMode,
+  imageUrl,
+  pendingImages,
+  theme,
+  fontScale,
+  refresh,
+} = usePlaybackSync()
 
 const hasLyrics = computed(() => previewLines.value.length > 0)
 const duration = computed(() => {
@@ -333,10 +400,56 @@ watch(imageUrl, (url) => {
   }
 }, { immediate: true })
 
-onMounted(() => {
-  fetchUploadedImages()
-  fetchSavedLyrics()
+onMounted(async () => {
+  await checkAdminAuth()
+  if (authenticated.value) {
+    await Promise.all([fetchUploadedImages(), fetchSavedLyrics()])
+  }
 })
+
+async function checkAdminAuth() {
+  authChecking.value = true
+  authMessage.value = ''
+  try {
+    const res = await $fetch<{ authenticated: boolean, configured: boolean }>('/api/auth/admin/status')
+    authenticated.value = res.authenticated
+    if (!res.configured) {
+      authMessage.value = '服务端未配置 ADMIN_PASSWORD'
+    }
+  } catch (e) {
+    authenticated.value = false
+    authMessage.value = e instanceof Error ? e.message : '无法检查登录状态'
+  } finally {
+    authChecking.value = false
+  }
+}
+
+async function login() {
+  if (!adminPassword.value || loggingIn.value) return
+  loggingIn.value = true
+  authMessage.value = ''
+  try {
+    await $fetch('/api/auth/admin/login', {
+      method: 'POST',
+      body: { password: adminPassword.value },
+    })
+    authenticated.value = true
+    adminPassword.value = ''
+    await Promise.all([fetchUploadedImages(), fetchSavedLyrics()])
+  } catch (e) {
+    authMessage.value = e instanceof Error ? e.message : '登录失败'
+  } finally {
+    loggingIn.value = false
+  }
+}
+
+async function logout() {
+  await $fetch('/api/auth/admin/logout', { method: 'POST' })
+  authenticated.value = false
+  savedLyrics.value = []
+  uploadedImages.value = []
+  adminPassword.value = ''
+}
 
 async function fetchSavedLyrics() {
   try {
@@ -432,11 +545,31 @@ async function fetchUploadedImages() {
 
 async function addToPending() {
   if (!selectedImageUrl.value) return
+  galleryMessage.value = ''
+  galleryError.value = false
   try {
     await send('addPending', { url: selectedImageUrl.value })
+    galleryMessage.value = '已加入待展示队列'
   } catch (e) {
-    uploadError.value = true
-    uploadMessage.value = e instanceof Error ? e.message : '添加失败'
+    galleryError.value = true
+    galleryMessage.value = e instanceof Error ? e.message : '添加失败'
+  }
+}
+
+async function showSelectedImage() {
+  if (!selectedImageUrl.value) return
+  directDisplaying.value = true
+  galleryMessage.value = ''
+  galleryError.value = false
+  try {
+    await send('selectImage', { url: selectedImageUrl.value })
+    currentImageUrl.value = selectedImageUrl.value
+    galleryMessage.value = '已直接展示到显示端'
+  } catch (e) {
+    galleryError.value = true
+    galleryMessage.value = e instanceof Error ? e.message : '展示失败'
+  } finally {
+    directDisplaying.value = false
   }
 }
 
@@ -565,6 +698,14 @@ async function switchTheme(nextTheme: DisplayTheme) {
   await send('setTheme', { theme: nextTheme })
 }
 
+let fontScaleTimer: ReturnType<typeof setTimeout> | null = null
+function onFontScaleInput(e: Event) {
+  const nextFontScale = Number((e.target as HTMLInputElement).value)
+  fontScale.value = nextFontScale
+  if (fontScaleTimer) clearTimeout(fontScaleTimer)
+  fontScaleTimer = setTimeout(() => send('setFontScale', { fontScale: nextFontScale }), 80)
+}
+
 function onImageSelect(e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
   if (!file) return
@@ -604,6 +745,12 @@ function onSeek(e: Event) {
   position: relative;
 }
 
+.admin--auth {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+}
+
 .admin::before {
   content: '';
   position: fixed;
@@ -615,12 +762,52 @@ function onSeek(e: Event) {
   z-index: -1;
 }
 
+.admin__login {
+  width: min(100%, 360px);
+  padding: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+  backdrop-filter: blur(10px);
+  box-sizing: border-box;
+}
+
+.admin__login .btn {
+  width: 100%;
+  margin-top: 0.85rem;
+}
+
+.admin__password {
+  width: 100%;
+  margin-top: 1.25rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid #333;
+  border-radius: 6px;
+  background: #0a0a0a;
+  color: #eee;
+  font-size: 0.95rem;
+  box-sizing: border-box;
+}
+
+.admin__password:focus {
+  outline: none;
+  border-color: rgba(212, 168, 83, 0.55);
+  box-shadow: 0 0 0 3px rgba(212, 168, 83, 0.12);
+}
+
 .admin__header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
   margin-bottom: 2rem;
+}
+
+.admin__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-shrink: 0;
 }
 
 .admin h1 {
@@ -819,6 +1006,17 @@ function onSeek(e: Event) {
   border-color: rgba(255, 100, 100, 0.5);
 }
 
+.btn--ghost {
+  padding: 0.5rem 0.8rem;
+  color: #888;
+  background: transparent;
+}
+
+.btn--ghost:hover:not(:disabled) {
+  color: #ddd;
+  background: rgba(255, 255, 255, 0.06);
+}
+
 .admin__image-preview {
   margin: 0.75rem 0;
   border-radius: 8px;
@@ -893,6 +1091,31 @@ function onSeek(e: Event) {
 
 .admin__theme-name {
   font-size: 0.9rem;
+}
+
+.admin__font-control {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.admin__font-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.65rem;
+}
+
+.admin__font-value {
+  font-size: 0.85rem;
+  color: #d4a853;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin__font-control input[type='range'] {
+  width: 100%;
+  accent-color: #d4a853;
 }
 
 .btn--mode {

@@ -11,5 +11,6 @@ export default defineEventHandler(() => {
     imageUrl: playback.imageUrl,
     pendingImages: playback.pendingImages,
     theme: playback.theme,
+    fontScale: playback.fontScale,
   }
 })

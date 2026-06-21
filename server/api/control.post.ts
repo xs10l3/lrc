@@ -12,6 +12,7 @@ import {
   reset,
   seek,
   setDisplayMode,
+  setFontScale,
   setImage,
   setLyrics,
   setTheme,
@@ -110,6 +111,15 @@ export default defineEventHandler(async (event) => {
     }
     setTheme(body.theme)
     return { ok: true, theme: body.theme }
+  }
+
+  if (body?.action === 'setFontScale') {
+    const fontScale = Number(body.fontScale)
+    if (!Number.isFinite(fontScale)) {
+      throw createError({ statusCode: 400, message: '无效的字体大小' })
+    }
+    setFontScale(fontScale)
+    return { ok: true, fontScale: Math.min(140, Math.max(75, Math.round(fontScale))) }
   }
 
   if (body?.action === 'play') {

@@ -16,6 +16,7 @@ export interface PlaybackState {
   imageUrl: string
   pendingImages: string[]
   theme: DisplayTheme
+  fontScale: number
 }
 
 const state: PlaybackState = {
@@ -29,6 +30,7 @@ const state: PlaybackState = {
   imageUrl: '',
   pendingImages: [],
   theme: DEFAULT_THEME,
+  fontScale: 100,
 }
 
 export function getPlaybackState(): PlaybackState {
@@ -152,4 +154,9 @@ export function reset() {
 
 export function setTheme(theme: DisplayTheme) {
   state.theme = theme
+}
+
+export function setFontScale(fontScale: number) {
+  if (!Number.isFinite(fontScale)) return
+  state.fontScale = Math.min(140, Math.max(75, Math.round(fontScale)))
 }

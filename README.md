@@ -63,6 +63,7 @@ cp .env.example .env
 | `OBS_REGION` | 区域，如 `cn-north-4` |
 | `OBS_ENDPOINT` | OBS 端点 URL |
 | `OBS_PUBLIC_BASE_URL` | 对象公开访问基础 URL |
+| `ADMIN_PASSWORD` | 管理端登录密码 |
 
 启动后若日志出现 `[OBS] 已就绪` 表示配置成功；若出现「未配置凭证」，歌词库与图片上传功能不可用，但本地歌词解析与显示仍可正常使用。
 
@@ -74,6 +75,8 @@ bun run dev
 
 - 管理端：http://localhost:3000/admin
 - 显示端：http://localhost:3000/display（建议在新窗口/竖屏设备打开）
+
+首次打开管理端时需要输入 `.env` 中的 `ADMIN_PASSWORD`。登录会话缓存在服务端内存中，浏览器通过 HttpOnly Cookie 保持登录；服务重启后需重新登录。
 
 ### 生产构建
 
@@ -116,12 +119,28 @@ public/            # 静态资源（含示例 sample.lrc）
 |------|------|------|
 | GET | `/api/state` | 获取当前播放/展示状态 |
 | POST | `/api/control` | 播放控制、图片队列、主题切换等 |
+| GET/POST | `/api/external/play` | 外部 HTTP 触发开始播放字幕（适合 OBS 插件/脚本调用） |
 | POST | `/api/lyrics` | 保存歌词到歌词库 |
 | GET | `/api/lyrics` | 列出已保存歌词 |
 | GET | `/api/lyrics/:id` | 读取指定歌词 |
 | DELETE | `/api/lyrics/:id` | 删除指定歌词 |
 | POST | `/api/upload` | 上传图片 |
 | GET | `/api/images` | 列出图库图片 |
+
+### OBS 外部播放触发
+
+OBS 插件或脚本可通过 HTTP 请求开始播放当前已加载的字幕：
+
+```bash
+curl "http://localhost:3000/api/external/play"
+```
+
+常用参数：
+
+- `reset=1`：从 0ms 重新开始播放，例如 `/api/external/play?reset=1`
+- `time=30000`：从指定毫秒开始播放，例如 `/api/external/play?time=30000`
+
+接口支持 `GET` 与 `POST`，调用后会自动切换到歌词显示模式；如果尚未加载歌词，会返回 `409`。
 
 ## License
 

@@ -10,6 +10,7 @@ export function usePlaybackSync() {
   const imageUrl = ref('')
   const pendingImages = ref<string[]>([])
   const theme = ref<DisplayTheme>(DEFAULT_THEME)
+  const fontScale = ref(100)
 
   let timer: ReturnType<typeof setInterval> | null = null
   let lastServerTime = 0
@@ -27,6 +28,7 @@ export function usePlaybackSync() {
         imageUrl: string
         pendingImages: string[]
         theme: DisplayTheme
+        fontScale: number
       }>('/api/state')
       meta.value = data.meta
       lines.value = data.lines
@@ -36,6 +38,7 @@ export function usePlaybackSync() {
       imageUrl.value = data.imageUrl
       pendingImages.value = data.pendingImages
       theme.value = data.theme
+      fontScale.value = data.fontScale
       lastServerTime = data.currentTime
       lastFetchAt = Date.now()
       localPlaying = data.isPlaying
@@ -75,6 +78,7 @@ export function usePlaybackSync() {
     imageUrl,
     pendingImages,
     theme,
+    fontScale,
     refresh: fetchState,
   }
 }

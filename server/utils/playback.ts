@@ -70,9 +70,6 @@ export function clearLyrics() {
 export function setImage(url: string) {
   state.imageUrl = url
   state.displayMode = 'image'
-  state.isPlaying = false
-  state.anchorTime = 0
-  state.anchorAt = Date.now()
 }
 
 export function clearImage() {
@@ -126,6 +123,7 @@ export function showNextPending(): string | null {
 
 export function play() {
   if (state.lines.length === 0) return
+  state.displayMode = 'lyrics'
   state.anchorAt = Date.now()
   state.isPlaying = true
 }

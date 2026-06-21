@@ -2,9 +2,17 @@
   <div class="home">
     <div class="home__bg" aria-hidden="true" />
     <div class="home__content">
-      <p class="home__badge">LRC DISPLAY</p>
-      <h1>歌词展示系统</h1>
-      <p class="home__desc">1:3 竖屏 · 黑金视觉 · 毕业典礼现场</p>
+      <p class="home__badge">GRADUATION 2026</p>
+      <h1>愿此去繁花似锦</h1>
+      <p class="home__desc">致每一位奔赴山海的高三毕业生</p>
+      <div class="home__blessing">
+        <p>愿你们带着今日的光，走向更辽阔的天地。</p>
+        <p>高考不是终点，而是青春写给未来的一封热烈回信。</p>
+        <p>祝前程滚烫，梦想有声，下一程依然闪闪发亮。</p>
+      </div>
+      <NuxtLink to="/display" class="home__button">
+        查看歌词
+      </NuxtLink>
       <!-- <nav class="home__nav">
         <NuxtLink to="/admin" class="home__card">
           <span class="home__card-icon">⚙</span>
@@ -70,9 +78,21 @@
 
 .home__desc {
   color: #555;
-  margin: 0 0 2.5rem;
+  margin: 0 0 1.4rem;
   font-size: 0.875rem;
   letter-spacing: 0.05em;
+}
+
+.home__blessing {
+  max-width: 520px;
+  margin: 0 auto 2.4rem;
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 0.95rem;
+  line-height: 1.9;
+}
+
+.home__blessing p {
+  margin: 0.25rem 0;
 }
 
 .home__nav {
@@ -80,6 +100,28 @@
   gap: 1rem;
   flex-wrap: wrap;
   justify-content: center;
+}
+
+.home__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 9rem;
+  min-height: 2.75rem;
+  padding: 0 1.4rem;
+  border: 1px solid rgba(212, 168, 83, 0.35);
+  border-radius: 6px;
+  background: linear-gradient(135deg, #d4a853, #ffe9b0);
+  color: #1a1000;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.home__button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 30px rgba(212, 168, 83, 0.18);
 }
 
 .home__card {

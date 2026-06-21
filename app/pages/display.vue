@@ -2,7 +2,7 @@
   <div class="display-root">
     <Transition name="image-reveal" mode="out-in">
       <div
-        :key="showImage ? imageUrl : 'lyrics'"
+        :key="showImage ? activeImageUrl : 'lyrics'"
         class="display-screen"
         :class="{ 'display-screen--image': showImage }"
         :data-theme="theme"
@@ -11,7 +11,7 @@
         <template v-if="showImage">
           <div
             class="display-screen__image"
-            :style="{ backgroundImage: `url(${imageUrl})` }"
+            :style="{ backgroundImage: `url(${activeImageUrl})` }"
             role="img"
           />
         </template>
@@ -24,7 +24,7 @@
           <div class="display-screen__scanline" aria-hidden="true" />
 
           <div class="display-screen__body">
-            <div v-if="lines.length" class="display-screen__lyrics-wrap">
+            <div v-if="lines.length || hasIntroMeta" class="display-screen__lyrics-wrap">
               <Transition name="lyric" mode="out-in">
                 <div v-if="showIntro" key="intro" class="display-screen__intro">
                   <div class="display-screen__intro-line" aria-hidden="true" />
@@ -102,16 +102,22 @@ useHead({
   ],
 })
 
-const { meta, lines, currentTime, displayMode, imageUrl, theme, fontScale } = usePlaybackSync()
+const { meta, lines, isPlaying, currentTime, displayMode, imageUrl, pendingImages, theme, fontScale } = usePlaybackSync()
 
-const showImage = computed(() => displayMode.value === 'image' && !!imageUrl.value)
 const fontScaleRatio = computed(() => fontScale.value / 100)
 const activeIndex = computed(() => findActiveLineIndex(lines.value, currentTime.value))
+const hasIntroMeta = computed(() => !!(meta.value.title || meta.value.artist))
+const activeImageUrl = computed(() => imageUrl.value || pendingImages.value[0] || '')
+const showExplicitImage = computed(() => displayMode.value === 'image' && !!activeImageUrl.value)
+const showMetaOnly = computed(() => lines.value.length === 0 && hasIntroMeta.value && !showExplicitImage.value)
+const showImage = computed(() =>
+  showExplicitImage.value
+  || (!isPlaying.value && !showMetaOnly.value && !!activeImageUrl.value),
+)
 const showIntro = computed(() =>
   !showImage.value
   && activeIndex.value < 0
-  && lines.value.length > 0
-  && !!(meta.value.title || meta.value.artist),
+  && hasIntroMeta.value,
 )
 const showProgress = computed(() => !showImage.value && lines.value.length > 0)
 

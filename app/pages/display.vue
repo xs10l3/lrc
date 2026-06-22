@@ -33,8 +33,8 @@
               <Transition name="lyric" mode="out-in">
                 <div v-if="showIntro" key="intro" class="display-screen__intro">
                   <div class="display-screen__intro-line" aria-hidden="true" />
-                  <p v-if="meta.title" class="display-screen__intro-title">{{ meta.title }}</p>
-                  <p v-if="meta.artist" class="display-screen__intro-artist">{{ meta.artist }}</p>
+                  <p v-if="meta.title" class="display-screen__intro-title">{{ formatVerticalText(meta.title) }}</p>
+                  <p v-if="meta.artist" class="display-screen__intro-artist">{{ formatVerticalText(meta.artist) }}</p>
                 </div>
 
                 <TransitionGroup
@@ -68,7 +68,7 @@
                       >{{ ch }}</span>
                     </span>
                   </template>
-                  <span v-else class="display-screen__line-text">{{ item.text || '…' }}</span>
+                  <span v-else class="display-screen__line-text">{{ formatVerticalText(item.text || '…') }}</span>
                 </p>
               </TransitionGroup>
               </Transition>
@@ -161,8 +161,14 @@ const visibleItems = computed(() => {
   return items
 })
 
+function formatVerticalText(text: string): string {
+  return text
+    .replaceAll('(', '（')
+    .replaceAll(')', '）')
+}
+
 function splitChars(text: string): string[] {
-  return [...(text || '…')].map(c => (c === ' ' ? '\u00A0' : c))
+  return [...formatVerticalText(text || '…')].map(c => (c === ' ' ? '\u00A0' : c))
 }
 </script>
 
@@ -184,8 +190,8 @@ function splitChars(text: string): string[] {
   border: none;
   display: block;
   aspect-ratio: auto;
-  width: min(100vw, calc(100dvh / 3));
-  height: min(100dvh, calc(100vw * 3));
+  width: min(100vw, calc(100dvh / 2));
+  height: min(100dvh, calc(100vw * 2));
 }
 
 .display-screen__image {
@@ -245,8 +251,8 @@ function splitChars(text: string): string[] {
   --ring-border: rgba(212, 168, 83, 0.3);
   --ring-shadow: rgba(212, 168, 83, 0.4);
 
-  width: min(100vw, calc(100dvh / 3));
-  aspect-ratio: 1 / 3;
+  width: min(100vw, calc(100dvh / 2));
+  aspect-ratio: 1 / 2;
   background:
     radial-gradient(ellipse 70% 34% at 50% 102%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 72%),
     radial-gradient(ellipse 80% 26% at 50% 0%, rgba(255, 255, 255, 0.08), transparent 64%),

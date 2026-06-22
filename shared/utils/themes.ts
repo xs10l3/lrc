@@ -10,7 +10,7 @@ export interface ThemeInfo {
 export const THEME_LIST: ThemeInfo[] = [
   { id: 'gold', name: '黑金', accent: '#d4a853' },
   { id: 'aurora', name: '极光', accent: '#7c9bff' },
-  { id: 'rose', name: '绯红', accent: '#ff7a9a' },
+  { id: 'rose', name: '绯红', accent: '#e3262e' },
   { id: 'jade', name: '翠玉', accent: '#5fd4a8' },
   { id: 'violet', name: '紫霄', accent: '#a78bff' },
   { id: 'amber', name: '琥珀', accent: '#ffb04a' },

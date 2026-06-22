@@ -1,7 +1,7 @@
 import type { DisplayTheme } from '#shared/utils/themes'
 import { DEFAULT_THEME } from '#shared/utils/themes'
 import type { LyricLine, LrcMeta } from '#shared/utils/parseLrc'
-import { isValidUploadUrl } from './uploads'
+import { isValidUploadUrl, listUploadedImages } from './uploads'
 
 export type DisplayMode = 'lyrics' | 'image'
 
@@ -14,6 +14,7 @@ export interface PlaybackState {
   anchorAt: number
   displayMode: DisplayMode
   imageUrl: string
+  idleImageUrl: string
   pendingImages: string[]
   theme: DisplayTheme
   fontScale: number
@@ -28,6 +29,7 @@ const state: PlaybackState = {
   anchorAt: Date.now(),
   displayMode: 'lyrics',
   imageUrl: '',
+  idleImageUrl: '',
   pendingImages: [],
   theme: DEFAULT_THEME,
   fontScale: 100,
@@ -70,6 +72,25 @@ export function clearLyrics() {
 export function setImage(url: string) {
   state.imageUrl = url
   state.displayMode = 'image'
+}
+
+export function setIdleImage(url: string) {
+  if (!isValidUploadUrl(url)) return
+  state.idleImageUrl = url
+}
+
+export async function ensureIdleImage() {
+  if (state.idleImageUrl) return state.idleImageUrl
+  const images = await listUploadedImages()
+  const earliest = images[images.length - 1]?.url ?? ''
+  if (earliest) state.idleImageUrl = earliest
+  return state.idleImageUrl
+}
+
+export function showIdleImage(): string | null {
+  if (!state.idleImageUrl) return null
+  setImage(state.idleImageUrl)
+  return state.idleImageUrl
 }
 
 export function clearImage() {

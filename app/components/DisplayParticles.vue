@@ -24,7 +24,7 @@ interface Particle {
 const THEME_HUES: Record<DisplayTheme, [number, number]> = {
   gold: [45, 220],
   aurora: [260, 200],
-  rose: [340, 20],
+  rose: [356, 8],
   jade: [160, 120],
   violet: [270, 290],
   amber: [35, 25],
@@ -35,14 +35,15 @@ let particles: Particle[] = []
 
 function init(width: number, height: number) {
   const [primary, secondary] = THEME_HUES[props.theme]
-  const count = Math.floor((width * height) / 8000)
-  particles = Array.from({ length: Math.min(count, 80) }, () => ({
+  const screenScale = Math.min(1.8, Math.max(1, width / 460))
+  const count = Math.floor((width * height) / 6800)
+  particles = Array.from({ length: Math.min(count, 105) }, () => ({
     x: Math.random() * width,
     y: Math.random() * height,
-    size: Math.random() * 2 + 0.5,
-    speedY: -(Math.random() * 0.4 + 0.15),
-    speedX: (Math.random() - 0.5) * 0.2,
-    opacity: Math.random() * 0.6 + 0.2,
+    size: (Math.random() * 2.1 + 0.75) * screenScale,
+    speedY: -(Math.random() * 0.34 + 0.12) * screenScale,
+    speedX: (Math.random() - 0.5) * 0.18 * screenScale,
+    opacity: Math.random() * 0.52 + 0.24,
     hue: Math.random() > 0.7 ? primary : secondary,
   }))
 }
@@ -66,12 +67,14 @@ function draw() {
       p.x = Math.random() * cssWidth
     }
 
-    const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 3)
-    grad.addColorStop(0, `hsla(${p.hue}, 80%, 75%, ${p.opacity})`)
-    grad.addColorStop(1, `hsla(${p.hue}, 80%, 75%, 0)`)
+    const glowRadius = p.size * 3.4
+    const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowRadius)
+    grad.addColorStop(0, `hsla(${p.hue}, 88%, 80%, ${p.opacity})`)
+    grad.addColorStop(0.36, `hsla(${p.hue}, 86%, 72%, ${p.opacity * 0.36})`)
+    grad.addColorStop(1, `hsla(${p.hue}, 86%, 72%, 0)`)
     ctx.fillStyle = grad
     ctx.beginPath()
-    ctx.arc(p.x, p.y, p.size * 3, 0, Math.PI * 2)
+    ctx.arc(p.x, p.y, glowRadius, 0, Math.PI * 2)
     ctx.fill()
   }
 

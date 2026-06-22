@@ -34,11 +34,53 @@
         </NuxtLink>
         <button class="btn btn--ghost" type="button" @click="logout">退出</button>
       </div>
-    </header>
-
-
-    <section class="admin__panel">
-      <h2>展示控制</h2>
+	    </header>
+	
+	
+	    <section class="admin__panel">
+	      <h2>播放控制</h2>
+		      <div class="admin__controls">
+		        <button class="btn btn--play-control" :disabled="!hasLyrics" @click="send('reset')">重置</button>
+		        <button class="btn btn--primary btn--play-control" :disabled="!hasLyrics" @click="send('toggle')">
+		          {{ playing ? '暂停' : '播放' }}
+		        </button>
+		        <button class="btn btn--play-control" :disabled="!idleImageUrl" @click="showIdleImage">
+		          展示默认图
+		        </button>
+		      </div>
+	      <div class="admin__nudge">
+	        <button class="btn btn--compact" :disabled="!hasLyrics" @click="nudgeSeek(-1000)">-1s</button>
+	        <button class="btn btn--compact" :disabled="!hasLyrics" @click="nudgeSeek(-500)">-0.5s</button>
+	        <button class="btn btn--compact" :disabled="!hasLyrics" @click="nudgeSeek(500)">+0.5s</button>
+	        <button class="btn btn--compact" :disabled="!hasLyrics" @click="nudgeSeek(1000)">+1s</button>
+	      </div>
+	      <div class="admin__seek">
+	        <input
+	          type="range"
+	          min="0"
+	          :max="duration"
+	          :value="currentTime"
+	          :disabled="!hasLyrics"
+	          @input="onSeek"
+		        >
+		        <span class="admin__time">{{ formatTime(currentTime) }} / {{ formatTime(duration) }}</span>
+		      </div>
+		      <ul v-if="compactPreviewLines.length" class="admin__compact-preview">
+		        <li
+		          v-for="item in compactPreviewLines"
+		          :key="item.index"
+		          :class="{ active: item.index === activeIndex }"
+		        >
+		          <button type="button" class="admin__preview-jump" @click="jumpToPreviewLine(item.line.time)">
+		            <span class="admin__preview-time">{{ formatTime(item.line.time) }}</span>
+		            <span class="admin__preview-text">{{ item.line.text || '…' }}</span>
+		          </button>
+		        </li>
+		      </ul>
+		    </section>
+	
+	    <section class="admin__panel">
+	      <h2>展示控制</h2>
       <p class="admin__hint">管理显示端当前状态</p>
 
       <div class="admin__actions admin__actions--display">
@@ -147,18 +189,21 @@
             ref="imageInput"
             type="file"
             accept="image/jpeg,image/png,image/gif,image/webp,image/*"
+            multiple
             hidden
             @change="onImageSelect"
           >
         </label>
         <span v-if="imageFileName" class="admin__file-name">{{ imageFileName }}</span>
       </div>
-      <div v-if="imagePreview" class="admin__image-preview">
-        <img :src="imagePreview" alt="待上传预览">
+      <div v-if="imagePreviews.length" class="admin__image-preview-list">
+        <div v-for="preview in imagePreviews" :key="preview.url" class="admin__image-preview">
+          <img :src="preview.url" :alt="preview.name">
+        </div>
       </div>
       <div class="admin__actions">
-        <button class="btn btn--primary" :disabled="!imageFile || imageUploading" @click="uploadImage">
-          {{ imageUploading ? '上传中…' : '上传到图库' }}
+        <button class="btn btn--primary" :disabled="!imageFiles.length || imageUploading" @click="uploadImage">
+          {{ imageUploading ? `上传中 ${uploadProgress.done}/${uploadProgress.total}` : uploadButtonText }}
         </button>
       </div>
       <p v-if="uploadMessage" class="admin__upload-msg" :class="{ 'admin__upload-msg--error': uploadError }">
@@ -167,25 +212,37 @@
     </section>
 
     <section class="admin__panel">
-      <h2>图库</h2>
-      <p class="admin__hint">选择图片后可直接展示，或加入待展示队列</p>
+      <div class="admin__panel-title-row">
+        <h2>图库</h2>
+        <NuxtLink v-if="galleryHasMore" to="/admin/gallery" class="admin__link admin__link--compact">
+          完整图库
+        </NuxtLink>
+      </div>
+      <p class="admin__hint">
+        只展示最新 {{ GALLERY_PREVIEW_LIMIT }} 张，选择图片后可直接展示，或加入待展示队列
+        <template v-if="galleryHasMore"> · 共 {{ galleryImageTotal }} 张</template>
+      </p>
 
       <div v-if="uploadedImages.length" class="admin__gallery">
         <div class="admin__gallery-grid">
-          <button
-            v-for="img in uploadedImages"
-            :key="img.url"
-            type="button"
-            class="admin__gallery-item"
-            :class="{
-              'admin__gallery-item--selected': selectedImageUrl === img.url,
-              'admin__gallery-item--in-pending': pendingImages.includes(img.url),
-            }"
-            @click="selectedImageUrl = img.url"
-          >
-            <img :src="img.url" alt="" loading="lazy">
-            <span v-if="pendingImages.includes(img.url)" class="admin__gallery-badge">待展示</span>
-          </button>
+	          <div
+	            v-for="img in uploadedImages"
+	            :key="img.url"
+	            class="admin__gallery-item"
+	            role="button"
+	            tabindex="0"
+	            :class="{
+	              'admin__gallery-item--selected': selectedImageUrl === img.url,
+	              'admin__gallery-item--in-pending': pendingImages.includes(img.url),
+	            }"
+	            @click="selectedImageUrl = img.url"
+	            @keydown.enter.prevent="selectedImageUrl = img.url"
+	            @keydown.space.prevent="selectedImageUrl = img.url"
+	            >
+	            <img :src="img.url" alt="" loading="lazy">
+	            <span v-if="idleImageUrl === img.url" class="admin__gallery-badge admin__gallery-badge--idle">默认图</span>
+	            <span v-if="pendingImages.includes(img.url)" class="admin__gallery-badge">待展示</span>
+	          </div>
         </div>
       </div>
       <p v-else class="admin__gallery-empty">图库为空，请先上传图片</p>
@@ -196,6 +253,9 @@
         </button>
         <button class="btn" :disabled="!selectedImageUrl" @click="addToPending">
           加入待展示
+        </button>
+        <button class="btn" :disabled="!selectedImageUrl || idleImageUrl === selectedImageUrl" @click="setDefaultImage(selectedImageUrl)">
+          {{ selectedImageUrl && idleImageUrl === selectedImageUrl ? '已是默认图' : '设为默认图' }}
         </button>
       </div>
       <p v-if="galleryMessage" class="admin__upload-msg" :class="{ 'admin__upload-msg--error': galleryError }">
@@ -281,28 +341,7 @@
       </div>
     </section>
 
-    <section class="admin__panel">
-      <h2>播放控制</h2>
-      <div class="admin__controls">
-        <button class="btn" :disabled="!hasLyrics" @click="send('reset')">重置</button>
-        <button class="btn btn--primary" :disabled="!hasLyrics" @click="send('toggle')">
-          {{ playing ? '暂停' : '播放' }}
-        </button>
-      </div>
-      <div class="admin__seek">
-        <input
-          type="range"
-          min="0"
-          :max="duration"
-          :value="currentTime"
-          :disabled="!hasLyrics"
-          @input="onSeek"
-        >
-        <span class="admin__time">{{ formatTime(currentTime) }} / {{ formatTime(duration) }}</span>
-      </div>
-    </section>
-
-    <section v-if="previewLines.length" class="admin__panel">
+	    <section v-if="previewLines.length" class="admin__panel">
       <h2>预览</h2>
       <ul class="admin__preview">
         <li
@@ -310,8 +349,10 @@
           :key="i"
           :class="{ active: i === activeIndex }"
         >
-          <span class="admin__preview-time">{{ formatTime(line.time) }}</span>
-          {{ line.text || '…' }}
+          <button type="button" class="admin__preview-jump" @click="jumpToPreviewLine(line.time)">
+            <span class="admin__preview-time">{{ formatTime(line.time) }}</span>
+            <span class="admin__preview-text">{{ line.text || '…' }}</span>
+          </button>
         </li>
       </ul>
     </section>
@@ -353,10 +394,11 @@ const savedLyrics = ref<{
 const activeLyricId = ref('')
 const lrcInput = ref<HTMLInputElement | null>(null)
 
-const imageFile = ref<File | null>(null)
+const imageFiles = ref<File[]>([])
 const imageFileName = ref('')
-const imagePreview = ref('')
+const imagePreviews = ref<{ url: string, name: string }[]>([])
 const imageUploading = ref(false)
+const uploadProgress = ref({ done: 0, total: 0 })
 const uploadMessage = ref('')
 const uploadError = ref(false)
 const galleryMessage = ref('')
@@ -366,26 +408,43 @@ const displaying = ref(false)
 const directDisplaying = ref(false)
 const currentImageUrl = ref('')
 const uploadedImages = ref<{ url: string, mtime: number }[]>([])
+const galleryImageTotal = ref(0)
+const galleryHasMore = ref(false)
 const imageInput = ref<HTMLInputElement | null>(null)
+const GALLERY_PREVIEW_LIMIT = 20
 
 const {
   lines,
   isPlaying,
   currentTime: syncedTime,
-  displayMode,
-  imageUrl,
-  pendingImages,
+	  displayMode,
+	  imageUrl,
+	  idleImageUrl,
+	  pendingImages,
   theme,
   fontScale,
   refresh,
 } = usePlaybackSync()
 
 const hasLyrics = computed(() => previewLines.value.length > 0)
+const uploadButtonText = computed(() => imageFiles.value.length > 1 ? `上传 ${imageFiles.value.length} 张到图库` : '上传到图库')
 const duration = computed(() => {
   const last = previewLines.value[previewLines.value.length - 1]
   return last ? last.time + 5000 : 0
 })
 const activeIndex = computed(() => findActiveLineIndex(previewLines.value, currentTime.value))
+const compactPreviewLines = computed(() => {
+  const lines = previewLines.value
+  if (!lines.length) return []
+
+  const center = activeIndex.value >= 0 ? activeIndex.value : 0
+  const start = Math.min(Math.max(center - 1, 0), Math.max(lines.length - 3, 0))
+
+  return lines.slice(start, start + 3).map((line, offset) => ({
+    line,
+    index: start + offset,
+  }))
+})
 
 watch(syncedTime, (t) => { currentTime.value = t })
 watch(isPlaying, (p) => { playing.value = p })
@@ -448,6 +507,8 @@ async function logout() {
   authenticated.value = false
   savedLyrics.value = []
   uploadedImages.value = []
+  galleryImageTotal.value = 0
+  galleryHasMore.value = false
   adminPassword.value = ''
 }
 
@@ -536,10 +597,18 @@ async function deleteSavedLyric(id: string) {
 
 async function fetchUploadedImages() {
   try {
-    const res = await $fetch<{ images: typeof uploadedImages.value }>('/api/images')
+    const res = await $fetch<{
+      images: typeof uploadedImages.value
+      total: number
+      hasMore: boolean
+    }>(`/api/images?limit=${GALLERY_PREVIEW_LIMIT}`)
     uploadedImages.value = res.images
+    galleryImageTotal.value = res.total
+    galleryHasMore.value = res.hasMore
   } catch {
     uploadedImages.value = []
+    galleryImageTotal.value = 0
+    galleryHasMore.value = false
   }
 }
 
@@ -570,6 +639,35 @@ async function showSelectedImage() {
     galleryMessage.value = e instanceof Error ? e.message : '展示失败'
   } finally {
     directDisplaying.value = false
+  }
+}
+
+async function showIdleImage() {
+  if (!idleImageUrl.value) return
+  directDisplaying.value = true
+  galleryMessage.value = ''
+  galleryError.value = false
+  try {
+    await send('showIdleImage')
+    currentImageUrl.value = idleImageUrl.value
+    galleryMessage.value = '已展示默认图'
+  } catch (e) {
+    galleryError.value = true
+    galleryMessage.value = e instanceof Error ? e.message : '展示默认图失败'
+  } finally {
+    directDisplaying.value = false
+  }
+}
+
+async function setDefaultImage(url: string) {
+  galleryMessage.value = ''
+  galleryError.value = false
+  try {
+    await send('setIdleImage', { url })
+    galleryMessage.value = '已设置为默认图'
+  } catch (e) {
+    galleryError.value = true
+    galleryMessage.value = e instanceof Error ? e.message : '设置默认图失败'
   }
 }
 
@@ -660,33 +758,57 @@ async function clearLyrics() {
 }
 
 async function uploadImage() {
-  if (!imageFile.value) return
+  if (!imageFiles.value.length) return
   imageUploading.value = true
   uploadMessage.value = ''
   uploadError.value = false
+  uploadProgress.value = { done: 0, total: imageFiles.value.length }
+  const urls: string[] = []
+  const failures: string[] = []
   try {
-    const form = new FormData()
-    form.append('file', imageFile.value, imageFile.value.name)
-    const res = await fetch('/api/upload', { method: 'POST', body: form })
-    const data = await res.json() as { url?: string, message?: string }
-    if (!res.ok) {
-      throw new Error(data.message ?? '上传失败')
+    for (const file of imageFiles.value) {
+      try {
+        const form = new FormData()
+        form.append('file', file, file.name)
+        const res = await fetch('/api/upload', { method: 'POST', body: form })
+        const data = await res.json() as { url?: string, message?: string }
+        if (!res.ok || !data.url) {
+          throw new Error(data.message ?? '上传失败')
+        }
+        urls.push(data.url)
+      } catch (e) {
+        const reason = e instanceof Error ? e.message : '上传失败'
+        failures.push(`${file.name}: ${reason}`)
+      } finally {
+        uploadProgress.value = {
+          ...uploadProgress.value,
+          done: uploadProgress.value.done + 1,
+        }
+      }
     }
-    uploadMessage.value = '上传成功，可从图库加入待展示'
-    selectedImageUrl.value = data.url!
-    imageFile.value = null
-    if (imagePreview.value) {
-      URL.revokeObjectURL(imagePreview.value)
-      imagePreview.value = ''
+
+    if (!urls.length) {
+      throw new Error(failures[0] ?? '上传失败')
     }
-    imageFileName.value = ''
-    if (imageInput.value) imageInput.value.value = ''
+
+    uploadError.value = failures.length > 0
+    uploadMessage.value = failures.length
+      ? `已上传 ${urls.length} 张，失败 ${failures.length} 张`
+      : `已上传 ${urls.length} 张，可从图库加入待展示`
+    selectedImageUrl.value = urls[0]!
+    clearImageSelection()
+
+    if (failures.length) {
+      console.warn('[image batch upload failures]', failures)
+    }
     await fetchUploadedImages()
+    await refresh()
   } catch (e) {
     uploadError.value = true
     uploadMessage.value = e instanceof Error ? e.message : '上传失败'
   } finally {
     imageUploading.value = false
+    uploadProgress.value = { done: 0, total: 0 }
   }
 }
 
@@ -707,13 +829,26 @@ function onFontScaleInput(e: Event) {
 }
 
 function onImageSelect(e: Event) {
-  const file = (e.target as HTMLInputElement).files?.[0]
-  if (!file) return
-  if (imagePreview.value) URL.revokeObjectURL(imagePreview.value)
-  imageFile.value = file
-  imageFileName.value = file.name
-  imagePreview.value = URL.createObjectURL(file)
+  const files = Array.from((e.target as HTMLInputElement).files ?? [])
+  if (!files.length) return
+  clearImageSelection()
+  imageFiles.value = files
+  imageFileName.value = files.length === 1 ? files[0]!.name : `已选择 ${files.length} 张图片`
+  imagePreviews.value = files.slice(0, 6).map(file => ({
+    name: file.name,
+    url: URL.createObjectURL(file),
+  }))
   ;(e.target as HTMLInputElement).value = ''
+}
+
+function clearImageSelection() {
+  for (const preview of imagePreviews.value) {
+    URL.revokeObjectURL(preview.url)
+  }
+  imageFiles.value = []
+  imageFileName.value = ''
+  imagePreviews.value = []
+  if (imageInput.value) imageInput.value.value = ''
 }
 
 function onFileSelect(e: Event) {
@@ -733,6 +868,28 @@ function onSeek(e: Event) {
   currentTime.value = time
   if (seekTimer) clearTimeout(seekTimer)
   seekTimer = setTimeout(() => send('seek', { time }), 80)
+}
+
+async function nudgeSeek(deltaMs: number) {
+  if (!hasLyrics.value) return
+  if (seekTimer) {
+    clearTimeout(seekTimer)
+    seekTimer = null
+  }
+  const nextTime = Math.min(duration.value, Math.max(0, currentTime.value + deltaMs))
+  currentTime.value = nextTime
+  await send('seek', { time: nextTime })
+}
+
+async function jumpToPreviewLine(time: number) {
+  if (!Number.isFinite(time)) return
+  if (seekTimer) {
+    clearTimeout(seekTimer)
+    seekTimer = null
+  }
+  currentTime.value = time
+  await send('setMode', { mode: 'lyrics' })
+  await send('seek', { time })
 }
 </script>
 
@@ -859,6 +1016,23 @@ function onSeek(e: Event) {
   margin: 0 0 1rem;
 }
 
+.admin__panel-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.admin__panel-title-row h2 {
+  margin: 0;
+}
+
+.admin__link--compact {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.78rem;
+}
+
 .admin__upload-row {
   display: flex;
   align-items: center;
@@ -915,7 +1089,15 @@ function onSeek(e: Event) {
 
 .admin__controls {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.admin__nudge {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
   margin-bottom: 1rem;
 }
 
@@ -932,6 +1114,28 @@ function onSeek(e: Event) {
   font-variant-numeric: tabular-nums;
 }
 
+.admin__compact-preview {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0.35rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.admin__compact-preview li {
+  border-radius: 4px;
+}
+
+.admin__compact-preview li.active {
+  background: rgba(212, 168, 83, 0.12);
+  box-shadow: inset 2px 0 0 #d4a853;
+}
+
+.admin__compact-preview li.active .admin__preview-jump {
+  color: #ffe9b0;
+}
+
 .admin__preview {
   list-style: none;
   margin: 0;
@@ -941,24 +1145,50 @@ function onSeek(e: Event) {
 }
 
 .admin__preview li {
-  padding: 0.35rem 0.5rem;
-  font-size: 0.875rem;
-  color: #555;
   border-radius: 4px;
 }
 
+.admin__preview-jump {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.35rem 0.5rem;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #666;
+  font: inherit;
+  font-size: 0.875rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin__preview-jump:hover,
+.admin__preview-jump:focus-visible {
+  color: #ddd;
+  background: rgba(255, 255, 255, 0.055);
+  outline: none;
+}
+
 .admin__preview li.active {
-  color: #ffe9b0;
   background: rgba(212, 168, 83, 0.1);
   box-shadow: inset 2px 0 0 #d4a853;
 }
 
+.admin__preview li.active .admin__preview-jump {
+  color: #ffe9b0;
+}
+
 .admin__preview-time {
-  display: inline-block;
-  width: 4.5rem;
+  flex: 0 0 4.5rem;
   font-variant-numeric: tabular-nums;
   color: #444;
   font-size: 0.75rem;
+}
+
+.admin__preview-text {
+  min-width: 0;
 }
 
 .admin__preview li.active .admin__preview-time {
@@ -973,6 +1203,20 @@ function onSeek(e: Event) {
   color: #ddd;
   font-size: 0.875rem;
   cursor: pointer;
+}
+
+.btn--compact {
+  min-width: 4.1rem;
+  padding-inline: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.btn--play-control {
+  min-width: 6.5rem;
+  min-height: 3.1rem;
+  padding-inline: 1.45rem;
+  font-size: 1.05rem;
+  font-weight: 700;
 }
 
 .btn:hover:not(:disabled) {
@@ -1017,22 +1261,28 @@ function onSeek(e: Event) {
   background: rgba(255, 255, 255, 0.06);
 }
 
-.admin__image-preview {
+.admin__image-preview-list {
   margin: 0.75rem 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 0.5rem;
+}
+
+.admin__image-preview {
+  aspect-ratio: 1;
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: #0a0a0a;
-  max-height: 240px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .admin__image-preview img {
-  max-width: 100%;
-  max-height: 240px;
-  object-fit: contain;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   display: block;
 }
 
@@ -1214,15 +1464,22 @@ function onSeek(e: Event) {
 
 .admin__gallery-badge {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 0.15rem;
+  top: 0.35rem;
+  right: 0.35rem;
+  padding: 0.15rem 0.35rem;
   font-size: 0.6rem;
   text-align: center;
   background: rgba(212, 168, 83, 0.85);
   color: #1a1000;
   font-weight: 500;
+  border-radius: 999px;
+}
+
+.admin__gallery-badge--idle {
+  left: 0.35rem;
+  right: auto;
+  background: rgba(255, 255, 255, 0.86);
+  color: #111;
 }
 
 .admin__gallery-item--in-pending {

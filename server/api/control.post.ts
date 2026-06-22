@@ -14,8 +14,10 @@ import {
   setDisplayMode,
   setFontScale,
   setImage,
+  setIdleImage,
   setLyrics,
   setTheme,
+  showIdleImage,
   showNextPending,
   showPendingImage,
   togglePlay,
@@ -51,6 +53,23 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 400, message: '无效的图片地址' })
     }
     setImage(url)
+    return { ok: true, url }
+  }
+
+  if (body?.action === 'showIdleImage') {
+    const url = showIdleImage()
+    if (!url) {
+      throw createError({ statusCode: 400, message: '暂无默认图片' })
+    }
+    return { ok: true, url }
+  }
+
+  if (body?.action === 'setIdleImage') {
+    const url = String(body.url ?? '')
+    if (!isValidUploadUrl(url)) {
+      throw createError({ statusCode: 400, message: '无效的图片地址' })
+    }
+    setIdleImage(url)
     return { ok: true, url }
   }
 

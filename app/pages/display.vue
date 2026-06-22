@@ -49,26 +49,50 @@
                   :key="item.globalIndex"
                   class="display-screen__line"
                   :class="item.state"
+                  :style="{ '--line-font-scale': `${fontScaleRatio * item.fitScale}` }"
                 >
                   <template v-if="item.state === 'is-active'">
                     <span class="display-screen__line-glow" aria-hidden="true">
                       <span
-                        v-for="(ch, ci) in splitChars(item.text)"
-                        :key="`g-${item.globalIndex}-${ci}`"
-                        class="display-screen__char display-screen__char--glow"
-                        :style="{ '--delay': `${ci * 0.07}s` }"
-                      >{{ ch }}</span>
+                        v-for="(column, columnIndex) in item.columns"
+                        :key="`g-${item.globalIndex}-${columnIndex}`"
+                        class="display-screen__column"
+                        :style="{ '--column-offset': `${columnIndex * COLUMN_OFFSET_EM}em` }"
+                      >
+                        <span
+                          v-for="(ch, ci) in column.chars"
+                          :key="`g-${item.globalIndex}-${columnIndex}-${ci}`"
+                          class="display-screen__char display-screen__char--glow"
+                          :style="{ '--delay': `${ch.delayIndex * 0.07}s` }"
+                        >{{ ch.text }}</span>
+                      </span>
                     </span>
                     <span class="display-screen__line-text display-screen__line-text--emerge">
                       <span
-                        v-for="(ch, ci) in splitChars(item.text)"
-                        :key="`${item.globalIndex}-${ci}`"
-                        class="display-screen__char"
-                        :style="{ '--delay': `${ci * 0.07}s` }"
-                      >{{ ch }}</span>
+                        v-for="(column, columnIndex) in item.columns"
+                        :key="`${item.globalIndex}-${columnIndex}`"
+                        class="display-screen__column"
+                        :style="{ '--column-offset': `${columnIndex * COLUMN_OFFSET_EM}em` }"
+                      >
+                        <span
+                          v-for="(ch, ci) in column.chars"
+                          :key="`${item.globalIndex}-${columnIndex}-${ci}`"
+                          class="display-screen__char"
+                          :style="{ '--delay': `${ch.delayIndex * 0.07}s` }"
+                        >{{ ch.text }}</span>
+                      </span>
                     </span>
                   </template>
-                  <span v-else class="display-screen__line-text">{{ formatVerticalText(item.text || '…') }}</span>
+                  <span v-else class="display-screen__line-text">
+                    <span
+                      v-for="(column, columnIndex) in item.columns"
+                      :key="`${item.globalIndex}-${columnIndex}`"
+                      class="display-screen__column"
+                      :style="{ '--column-offset': `${columnIndex * COLUMN_OFFSET_EM}em` }"
+                    >
+                      <span v-for="(ch, ci) in column.chars" :key="`${item.globalIndex}-${columnIndex}-${ci}`">{{ ch.text }}</span>
+                    </span>
+                  </span>
                 </p>
               </TransitionGroup>
               </Transition>
@@ -107,13 +131,14 @@ useHead({
   ],
 })
 
-const { meta, lines, isPlaying, currentTime, displayMode, imageUrl, pendingImages, theme, fontScale } = usePlaybackSync()
+const { meta, lines, isPlaying, currentTime, displayMode, imageUrl, idleImageUrl, pendingImages, theme, fontScale } = usePlaybackSync()
 
 const fontScaleRatio = computed(() => fontScale.value / 100)
 const activeIndex = computed(() => findActiveLineIndex(lines.value, currentTime.value))
 const hasIntroMeta = computed(() => !!(meta.value.title || meta.value.artist))
-const activeImageUrl = computed(() => imageUrl.value || pendingImages.value[0] || '')
-const showExplicitImage = computed(() => displayMode.value === 'image' && !!activeImageUrl.value)
+const idlePreviewImageUrl = computed(() => idleImageUrl.value || pendingImages.value[0] || imageUrl.value || '')
+const activeImageUrl = computed(() => displayMode.value === 'image' ? imageUrl.value : idlePreviewImageUrl.value)
+const showExplicitImage = computed(() => displayMode.value === 'image' && !!imageUrl.value)
 const showMetaOnly = computed(() => lines.value.length === 0 && hasIntroMeta.value && !showExplicitImage.value)
 const showImage = computed(() =>
   showExplicitImage.value
@@ -125,6 +150,7 @@ const showIntro = computed(() =>
   && hasIntroMeta.value,
 )
 const showProgress = computed(() => !showImage.value && lines.value.length > 0)
+const COLUMN_OFFSET_EM = 0.9
 
 const duration = computed(() => {
   const last = lines.value[lines.value.length - 1]
@@ -141,7 +167,14 @@ const visibleItems = computed(() => {
 
   if (all.length === 0) return []
 
-  type LineItem = { time: number, text: string, globalIndex: number, state: string }
+  type LineItem = {
+    time: number
+    text: string
+    globalIndex: number
+    state: string
+    columns: VerticalColumn[]
+    fitScale: number
+  }
 
   if (idx < 0) return []
 
@@ -149,13 +182,13 @@ const visibleItems = computed(() => {
 
   if (idx > 0) {
     const prev = all[idx - 1]!
-    items.push({ time: prev.time, text: prev.text, globalIndex: idx - 1, state: 'is-past' })
+    items.push(createLineItem(prev.time, prev.text, idx - 1, 'is-past'))
   }
   const current = all[idx]!
-  items.push({ time: current.time, text: current.text, globalIndex: idx, state: 'is-active' })
+  items.push(createLineItem(current.time, current.text, idx, 'is-active'))
   if (idx < all.length - 1) {
     const next = all[idx + 1]!
-    items.push({ time: next.time, text: next.text, globalIndex: idx + 1, state: 'is-next' })
+    items.push(createLineItem(next.time, next.text, idx + 1, 'is-next'))
   }
 
   return items
@@ -167,8 +200,53 @@ function formatVerticalText(text: string): string {
     .replaceAll(')', '）')
 }
 
-function splitChars(text: string): string[] {
-  return [...formatVerticalText(text || '…')].map(c => (c === ' ' ? '\u00A0' : c))
+type VerticalChar = { text: string, delayIndex: number }
+type VerticalColumn = { chars: VerticalChar[] }
+
+function createLineItem(time: number, text: string, globalIndex: number, state: string) {
+  const columns = splitVerticalColumns(text)
+  return {
+    time,
+    text,
+    globalIndex,
+    state,
+    columns,
+    fitScale: estimateFitScale(columns, state),
+  }
+}
+
+function estimateFitScale(columns: VerticalColumn[], state: string) {
+  const longestColumn = Math.max(...columns.map(column => column.chars.length), 1)
+  const columnOffset = Math.max(0, columns.length - 1) * COLUMN_OFFSET_EM
+  const verticalPressure = longestColumn + columnOffset
+  const limit = state === 'is-active' ? 8.6 : 13
+
+  return Math.min(1, Math.max(0.68, limit / verticalPressure))
+}
+
+function splitVerticalColumns(text: string): VerticalColumn[] {
+  const columns: VerticalColumn[] = []
+  let currentColumn: VerticalChar[] = []
+  let delayIndex = 0
+
+  for (const ch of formatVerticalText(text || '…')) {
+    if (/\s/u.test(ch)) {
+      if (currentColumn.length) {
+        columns.push({ chars: currentColumn })
+        currentColumn = []
+      }
+      continue
+    }
+
+    currentColumn.push({ text: ch, delayIndex })
+    delayIndex += 1
+  }
+
+  if (currentColumn.length) {
+    columns.push({ chars: currentColumn })
+  }
+
+  return columns.length ? columns : [{ chars: [{ text: '…', delayIndex: 0 }] }]
 }
 </script>
 
@@ -245,7 +323,7 @@ function splitChars(text: string): string[] {
   --gradient-shimmer: linear-gradient(120deg, #fff 0%, #ffe9b0 35%, #fff 50%, #d4a853 65%, #fff 100%);
   --gradient-progress: linear-gradient(90deg, #8b6914, #d4a853, #ffe9b0);
   --stage-glow: rgba(212, 168, 83, 0.34);
-  --stage-beam: rgba(255, 233, 176, 0.16);
+  --stage-beam: rgba(255, 233, 176, 0.26);
   --progress-glow: rgba(212, 168, 83, 0.5);
   --progress-dot-shadow: rgba(212, 168, 83, 0.8);
   --ring-border: rgba(212, 168, 83, 0.3);
@@ -289,7 +367,7 @@ function splitChars(text: string): string[] {
   --gradient-shimmer: linear-gradient(120deg, #fff 0%, #c4d4ff 35%, #fff 50%, #7c9bff 65%, #fff 100%);
   --gradient-progress: linear-gradient(90deg, #4a6fd4, #7c9bff, #c4d4ff);
   --stage-glow: rgba(124, 155, 255, 0.35);
-  --stage-beam: rgba(196, 212, 255, 0.16);
+  --stage-beam: rgba(196, 212, 255, 0.26);
   --progress-glow: rgba(124, 155, 255, 0.5);
   --progress-dot-shadow: rgba(124, 155, 255, 0.8);
   --ring-border: rgba(124, 155, 255, 0.35);
@@ -297,25 +375,25 @@ function splitChars(text: string): string[] {
 }
 
 .display-screen[data-theme="rose"] {
-  --bg-screen: #100508;
-  --border: rgba(255, 122, 154, 0.1);
-  --accent: #ff7a9a;
-  --accent-light: #ffc4d4;
-  --accent-soft: #ffe8ef;
-  --accent-dark: #c44a6a;
-  --aurora-1: rgba(255, 100, 140, 0.2);
-  --aurora-2: rgba(255, 160, 120, 0.12);
-  --aurora-3: rgba(200, 80, 120, 0.1);
-  --gradient-intro: linear-gradient(160deg, #fff 0%, #ffc4d4 40%, #ff7a9a 70%, #ffe8ef 100%);
-  --gradient-active: linear-gradient(160deg, #fff 0%, #ffc4d4 40%, #ff7a9a 70%, #ffe8ef 100%);
-  --gradient-shimmer: linear-gradient(120deg, #fff 0%, #ffc4d4 35%, #fff 50%, #ff7a9a 65%, #fff 100%);
-  --gradient-progress: linear-gradient(90deg, #c44a6a, #ff7a9a, #ffc4d4);
-  --stage-glow: rgba(255, 122, 154, 0.34);
-  --stage-beam: rgba(255, 196, 212, 0.16);
-  --progress-glow: rgba(255, 122, 154, 0.5);
-  --progress-dot-shadow: rgba(255, 122, 154, 0.8);
-  --ring-border: rgba(255, 122, 154, 0.35);
-  --ring-shadow: rgba(255, 122, 154, 0.4);
+  --bg-screen: #120304;
+  --border: rgba(227, 38, 46, 0.14);
+  --accent: #e3262e;
+  --accent-light: #ff8d86;
+  --accent-soft: #ffe0dc;
+  --accent-dark: #9f1018;
+  --aurora-1: rgba(227, 38, 46, 0.24);
+  --aurora-2: rgba(255, 88, 70, 0.16);
+  --aurora-3: rgba(150, 12, 24, 0.14);
+  --gradient-intro: linear-gradient(160deg, #fff 0%, #ffb0a8 38%, #e3262e 70%, #ffe0dc 100%);
+  --gradient-active: linear-gradient(160deg, #fff 0%, #ffb0a8 38%, #e3262e 70%, #ffe0dc 100%);
+  --gradient-shimmer: linear-gradient(120deg, #fff 0%, #ffb0a8 35%, #fff 50%, #e3262e 65%, #fff 100%);
+  --gradient-progress: linear-gradient(90deg, #9f1018, #e3262e, #ff8d86);
+  --stage-glow: rgba(227, 38, 46, 0.4);
+  --stage-beam: rgba(255, 132, 120, 0.28);
+  --progress-glow: rgba(227, 38, 46, 0.56);
+  --progress-dot-shadow: rgba(227, 38, 46, 0.86);
+  --ring-border: rgba(227, 38, 46, 0.42);
+  --ring-shadow: rgba(227, 38, 46, 0.48);
 }
 
 .display-screen[data-theme="jade"] {
@@ -333,7 +411,7 @@ function splitChars(text: string): string[] {
   --gradient-shimmer: linear-gradient(120deg, #fff 0%, #b8f0d8 35%, #fff 50%, #5fd4a8 65%, #fff 100%);
   --gradient-progress: linear-gradient(90deg, #2a9a72, #5fd4a8, #b8f0d8);
   --stage-glow: rgba(95, 212, 168, 0.32);
-  --stage-beam: rgba(184, 240, 216, 0.15);
+  --stage-beam: rgba(184, 240, 216, 0.25);
   --progress-glow: rgba(95, 212, 168, 0.5);
   --progress-dot-shadow: rgba(95, 212, 168, 0.8);
   --ring-border: rgba(95, 212, 168, 0.35);
@@ -355,7 +433,7 @@ function splitChars(text: string): string[] {
   --gradient-shimmer: linear-gradient(120deg, #fff 0%, #d4c4ff 35%, #fff 50%, #a78bff 65%, #fff 100%);
   --gradient-progress: linear-gradient(90deg, #7050c4, #a78bff, #d4c4ff);
   --stage-glow: rgba(167, 139, 255, 0.34);
-  --stage-beam: rgba(212, 196, 255, 0.16);
+  --stage-beam: rgba(212, 196, 255, 0.26);
   --progress-glow: rgba(167, 139, 255, 0.5);
   --progress-dot-shadow: rgba(167, 139, 255, 0.8);
   --ring-border: rgba(167, 139, 255, 0.35);
@@ -377,7 +455,7 @@ function splitChars(text: string): string[] {
   --gradient-shimmer: linear-gradient(120deg, #fff 0%, #ffe0a8 35%, #fff 50%, #ffb04a 65%, #fff 100%);
   --gradient-progress: linear-gradient(90deg, #c47a20, #ffb04a, #ffe0a8);
   --stage-glow: rgba(255, 176, 74, 0.34);
-  --stage-beam: rgba(255, 224, 168, 0.16);
+  --stage-beam: rgba(255, 224, 168, 0.26);
   --progress-glow: rgba(255, 176, 74, 0.5);
   --progress-dot-shadow: rgba(255, 176, 74, 0.8);
   --ring-border: rgba(255, 176, 74, 0.35);
@@ -405,13 +483,15 @@ function splitChars(text: string): string[] {
 
 .display-screen__stage-light {
   position: absolute;
-  top: -8%;
-  width: 34%;
-  height: 72%;
+  top: -10%;
+  width: 42%;
+  height: 78%;
   z-index: 1;
-  opacity: 0.72;
-  background: linear-gradient(180deg, var(--stage-beam), transparent 78%);
-  filter: blur(2px);
+  opacity: 0.88;
+  background:
+    radial-gradient(ellipse 34% 12% at 50% 0%, color-mix(in srgb, var(--accent-light) 55%, transparent), transparent 70%),
+    linear-gradient(180deg, var(--stage-beam), transparent 82%);
+  filter: blur(1.4px);
   mix-blend-mode: screen;
   pointer-events: none;
   transform-origin: top center;
@@ -419,22 +499,22 @@ function splitChars(text: string): string[] {
 }
 
 .display-screen__stage-light--left {
-  left: 6%;
+  left: 2%;
   clip-path: polygon(38% 0, 64% 0, 100% 100%, 0 100%);
   transform: rotate(-18deg);
 }
 
 .display-screen__stage-light--right {
-  right: 6%;
+  right: 2%;
   clip-path: polygon(36% 0, 62% 0, 100% 100%, 0 100%);
   transform: rotate(18deg);
   animation-delay: -2.2s;
 }
 
 @keyframes stage-sweep {
-  0% { opacity: 0.28; filter: blur(4px); }
-  45% { opacity: 0.76; filter: blur(1px); }
-  100% { opacity: 0.42; filter: blur(3px); }
+  0% { opacity: 0.42; filter: blur(3px); }
+  45% { opacity: 0.92; filter: blur(1px); }
+  100% { opacity: 0.58; filter: blur(2.5px); }
 }
 
 .display-screen__led-grid {
@@ -458,20 +538,20 @@ function splitChars(text: string): string[] {
 
 .display-screen__light-rig {
   position: absolute;
-  left: 8%;
-  right: 8%;
+  left: 5%;
+  right: 5%;
   z-index: 3;
-  height: 2px;
+  height: 4px;
   background:
-    radial-gradient(circle at 8% 50%, var(--accent-light) 0 2px, transparent 3px),
-    radial-gradient(circle at 25% 50%, var(--accent) 0 2px, transparent 3px),
-    radial-gradient(circle at 42% 50%, var(--accent-light) 0 2px, transparent 3px),
-    radial-gradient(circle at 58% 50%, var(--accent) 0 2px, transparent 3px),
-    radial-gradient(circle at 75% 50%, var(--accent-light) 0 2px, transparent 3px),
-    radial-gradient(circle at 92% 50%, var(--accent) 0 2px, transparent 3px),
-    linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 35%, transparent), transparent);
-  box-shadow: 0 0 16px var(--stage-glow);
-  opacity: 0.72;
+    radial-gradient(circle at 8% 50%, var(--accent-light) 0 3px, transparent 5px),
+    radial-gradient(circle at 25% 50%, var(--accent) 0 3px, transparent 5px),
+    radial-gradient(circle at 42% 50%, var(--accent-light) 0 3px, transparent 5px),
+    radial-gradient(circle at 58% 50%, var(--accent) 0 3px, transparent 5px),
+    radial-gradient(circle at 75% 50%, var(--accent-light) 0 3px, transparent 5px),
+    radial-gradient(circle at 92% 50%, var(--accent) 0 3px, transparent 5px),
+    linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 50%, transparent), transparent);
+  box-shadow: 0 0 24px var(--stage-glow), 0 0 42px color-mix(in srgb, var(--accent) 18%, transparent);
+  opacity: 0.86;
   pointer-events: none;
 }
 
@@ -613,9 +693,12 @@ function splitChars(text: string): string[] {
 
 .display-screen__intro-artist {
   margin: 0;
-  font-size: clamp(calc(0.85rem * var(--font-scale)), calc(5vw * var(--font-scale)), calc(1.2rem * var(--font-scale)));
+  max-height: 54dvh;
+  overflow: hidden;
+  font-size: clamp(calc(1rem * var(--font-scale)), calc(6.2vw * var(--font-scale)), calc(1.45rem * var(--font-scale)));
   color: color-mix(in srgb, var(--accent-light) 76%, rgba(255, 255, 255, 0.45));
-  letter-spacing: 0.18em;
+  letter-spacing: 0.12em;
+  line-height: 1.18;
   writing-mode: vertical-rl;
   text-orientation: upright;
   text-shadow: 0 0 18px var(--stage-glow);
@@ -675,7 +758,7 @@ function splitChars(text: string): string[] {
   justify-content: center;
   gap: clamp(0.55rem, 3.2vw, 1.15rem);
   position: relative;
-  min-height: 72dvh;
+  min-height: 74dvh;
 }
 
 .display-screen__line {
@@ -685,7 +768,7 @@ function splitChars(text: string): string[] {
   position: relative;
   width: auto;
   min-height: 42dvh;
-  max-height: 74dvh;
+  max-height: 78dvh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -699,12 +782,23 @@ function splitChars(text: string): string[] {
 }
 
 .display-screen__line-text {
+  display: inline-flex;
+  flex-direction: row-reverse;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.32em;
+  writing-mode: horizontal-tb;
   position: relative;
   z-index: 1;
 }
 
 .display-screen__line-text--emerge {
+  display: inline-flex;
+}
+
+.display-screen__column {
   display: inline-block;
+  padding-top: var(--column-offset, 0);
   writing-mode: vertical-rl;
   text-orientation: upright;
 }
@@ -758,7 +852,12 @@ function splitChars(text: string): string[] {
   position: absolute;
   inset: 0;
   z-index: 0;
-  text-align: center;
+  display: inline-flex;
+  flex-direction: row-reverse;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.32em;
+  writing-mode: horizontal-tb;
   color: transparent;
   filter: blur(20px);
   opacity: 0.72;
@@ -770,7 +869,7 @@ function splitChars(text: string): string[] {
 }
 
 .display-screen__line.is-past {
-  font-size: clamp(calc(0.82rem * var(--font-scale)), calc(4.8vw * var(--font-scale)), calc(1.2rem * var(--font-scale)));
+  font-size: clamp(calc(0.82rem * var(--line-font-scale, var(--font-scale))), calc(4.8vw * var(--line-font-scale, var(--font-scale))), calc(1.2rem * var(--line-font-scale, var(--font-scale))));
   color: color-mix(in srgb, var(--accent-light) 30%, transparent);
   transform: scale(0.9) translateX(8px);
   filter: blur(0.8px);
@@ -778,7 +877,7 @@ function splitChars(text: string): string[] {
 }
 
 .display-screen__line.is-active {
-  font-size: clamp(calc(2rem * var(--font-scale)), calc(14.5vw * var(--font-scale)), calc(3.65rem * var(--font-scale)));
+  font-size: clamp(calc(2rem * var(--line-font-scale, var(--font-scale))), calc(14.5vw * var(--line-font-scale, var(--font-scale))), calc(3.65rem * var(--line-font-scale, var(--font-scale))));
   font-weight: 700;
   letter-spacing: 0.08em;
   transform: scale(1);
@@ -819,7 +918,7 @@ function splitChars(text: string): string[] {
 }
 
 .display-screen__line.is-next {
-  font-size: clamp(calc(0.9rem * var(--font-scale)), calc(5.2vw * var(--font-scale)), calc(1.32rem * var(--font-scale)));
+  font-size: clamp(calc(0.9rem * var(--line-font-scale, var(--font-scale))), calc(5.2vw * var(--line-font-scale, var(--font-scale))), calc(1.32rem * var(--line-font-scale, var(--font-scale))));
   color: color-mix(in srgb, var(--accent-light) 36%, transparent);
   transform: scale(0.92) translateX(-8px);
   opacity: 0.5;

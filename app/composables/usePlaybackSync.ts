@@ -8,6 +8,7 @@ export function usePlaybackSync() {
   const currentTime = ref(0)
   const displayMode = ref<'lyrics' | 'image'>('lyrics')
   const imageUrl = ref('')
+  const idleImageUrl = ref('')
   const pendingImages = ref<string[]>([])
   const theme = ref<DisplayTheme>(DEFAULT_THEME)
   const fontScale = ref(100)
@@ -26,6 +27,7 @@ export function usePlaybackSync() {
         currentTime: number
         displayMode: 'lyrics' | 'image'
         imageUrl: string
+        idleImageUrl: string
         pendingImages: string[]
         theme: DisplayTheme
         fontScale: number
@@ -36,6 +38,7 @@ export function usePlaybackSync() {
       currentTime.value = data.currentTime
       displayMode.value = data.displayMode
       imageUrl.value = data.imageUrl
+      idleImageUrl.value = data.idleImageUrl
       pendingImages.value = data.pendingImages
       theme.value = data.theme
       fontScale.value = data.fontScale
@@ -76,6 +79,7 @@ export function usePlaybackSync() {
     currentTime,
     displayMode,
     imageUrl,
+    idleImageUrl,
     pendingImages,
     theme,
     fontScale,
